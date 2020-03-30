@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <math.h>
 
 
 #define MAX_PATH_SIZE 512
@@ -42,7 +43,7 @@ int main(int argc, char* argv[]){
             case 0:     //long option
                 break;
             case 'a':
-                all = 0;
+                all = true;
                 break;
             case 'b':
                 bytes = true;
@@ -73,5 +74,35 @@ int main(int argc, char* argv[]){
         }
 
     }
+
+    DIR *dirp;
+    struct dirent *direntp;
+    struct stat stat_buf;
+    char *str;
+
+    if ((dirp = opendir(".")) == NULL)
+    {
+        perror(".");
+        exit(2);
+    }
+    while ((direntp = readdir( dirp)) != NULL)
+    {
+        if (lstat(direntp->d_name, &stat_buf) != 0) {
+            perror(".");
+            exit(3);
+        }
+        if (strcmp(direntp->d_name, "..") == 0) continue; 
+        if (S_ISREG(stat_buf.st_mode) && all){
+            int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
+            printf("%-7d ./%s\n", (int)ceil(file_space/block_size), direntp->d_name);
+        } else if (S_ISDIR(stat_buf.st_mode)){
+            int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
+            if (strcmp(direntp->d_name,".") == 0)
+                printf("%-7d %s\n", (int)ceil(file_space/block_size), direntp->d_name);
+            else 
+                printf("%-7d ./%s\n", (int)ceil(file_space/block_size), direntp->d_name);
+        }
+    }
+    closedir(dirp);
     exit(0);
 }
