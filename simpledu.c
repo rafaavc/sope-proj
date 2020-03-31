@@ -148,7 +148,7 @@ int main(int argc, char* argv[]){
                     printf("%-7d %s\n", (int)ceil(file_space/block_size), newpath);
                     wait(NULL);
                 } else if (max_depth > 1){
-                    char ** command;
+                    char ** command = NULL;
                     prepare_command(command, newpath);
                     closedir(dirp);
                     execv(command[0], command);
