@@ -38,6 +38,9 @@ disco por parte de ficheiros e diretórios, considerando sempre que a opção
 
 bool all = false, bytes = false, count_links = true, dereference = false, separate_dirs = false;
 
+char * logFilename;
+
+
 bool check_stat(struct stat stat_buf){
     if (S_ISLNK(stat_buf.st_mode)){
         if (all || dereference) return true;
@@ -84,15 +87,12 @@ struct option const long_options[] = {
     {"max-depth", required_argument, NULL, MAX_DEPTH}
 };
 
-int main(int argc, char* argv[]){
-
-    char c;
-    char *path = malloc(MAX_STRING_SIZE);
+char * getCommandLineArgs(int argc, char * argv[]) {
+    char * path = malloc(MAX_STRING_SIZE);
     strcpy(path,".");
-    //bool para opções variadas
 
-
-    //lê todas as opções que forem passadas no argv
+    //lê todas as opções que forem passadas no argv (exceto o path)
+    char c;
     while((c = getopt_long(argc, argv, "abB:lLS", long_options, NULL)) != -1){
         switch(c){
             case 0:     //long option
@@ -143,6 +143,7 @@ int main(int argc, char* argv[]){
         }
     }
 
+    // gets path
     int i = 1;
     while(i < argc && argv[i] != NULL){
         if (strcmp(argv[i], "-B") == 0 || strcmp(argv[i], "--block-size")== 0 || strcmp(argv[i], "--max-depth") == 0) {
@@ -155,6 +156,19 @@ int main(int argc, char* argv[]){
         }
         i++;
     }
+    return path;
+}
+
+void setLogFilename() {
+    logFilename = getenv("LOG_FILENAME");
+    if (logFilename == NULL) {
+        logFilename = "./log.txt";
+    }
+}
+
+int main(int argc, char* argv[]){
+    char *path = getCommandLineArgs(argc, argv); 
+    setLogFilename();
 
     DIR *dirp;
     struct dirent *direntp;
