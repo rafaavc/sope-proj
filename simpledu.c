@@ -10,6 +10,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <math.h>
+#include <signal.h>
 
 
 #define MAX_STRING_SIZE 512
@@ -166,9 +167,49 @@ void setLogFilename() {
     }
 }
 
+void signalHandler(int signo) {
+    if (signo == SIGINT) {
+        char* opt;
+
+        // Send SIGSTOP to children (use int killpg(int pgrp, int sig) to send the children to the pgroup created)
+        while(true) {
+            printf("Are you sure you want to terminate execution? (Y/N) ");
+            scanf("%s", opt);
+            if (opt[0] == 'Y' || opt[0] == 'y') {
+                // Send SIGTERM to children
+                printf("Terminating execution.\n");
+                break;
+            } else if (opt[0] == 'N' || opt[0] == 'n') {
+                // Send SIGCONT to children
+                printf("Resuming execution.\n");
+                break;
+            }
+        }
+    }
+}
+
+void installSignalHandler() {
+    struct sigaction action;
+
+    action.sa_handler = signalHandler;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+
+    if (sigaction(SIGINT, &action, NULL) == -1) {
+        printf("Unable to install signal handler.\n");
+        exit(4);
+    }
+}
+
 int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
     setLogFilename();
+    installSignalHandler();
+    
+    /*
+    All children need to be changed into another process group so that SIGINT is sent only to the main process
+    Doubt: Do we need to log all signals or only SIGINT's?
+    */
 
     DIR *dirp;
     struct dirent *direntp;
