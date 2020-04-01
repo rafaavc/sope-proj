@@ -68,6 +68,10 @@ void prepare_command(char **cmd, char* path){
     cmd[i] = NULL;
 }
 
+void printUsage() {
+    printf("\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n");
+}
+
 
 //struct para opções longas funcionarem com getopt_long
 struct option const long_options[] = {
@@ -131,7 +135,8 @@ int main(int argc, char* argv[]){
                 //printf("Max depth = %d\n", max_depth);
                 break;
             case '?':
-                printf("Can't identify\n");
+                printUsage();
+                exit(1);
                 break;
             default:
                 break;
