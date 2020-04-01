@@ -202,7 +202,7 @@ void installSignalHandler() {
 
 int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
-    setLogFilename();
+    setLogFilename(); // i suggest that we create the logger functions in a separate file
     installSignalHandler();
 
     /*
