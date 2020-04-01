@@ -16,8 +16,27 @@
 #define MAX_DEPTH 'm'
 
 
+/*
+From the specifications:
+
+"Na ferramenta proposta para este trabalho, deve tentar-se reproduzir a informação
+apresentada pelo comando du correntemente instalado. Por omissão, o comando du:
+    - apresenta o espaço ocupado em número de blocos de 1024 bytes;
+    - apenas lista diretórios;
+    - não segue links simbólicos;
+    - contabiliza uma única vez cada ficheiro;
+    - apresenta de forma cumulativa o tamanho de subdiretórios e ficheiros incluídos;
+    - não restringe os níveis de profundidade na estrutura de diretórios.""
+*/
+
 int block_size = 1024, max_depth = __INT_MAX__;
-bool all = false, bytes = false, count_links = false, dereference = false, separate_dirs = false;
+
+/*count_links is true because the specifications says "A ferramenta simpledu, como 
+exemplificado, deve disponibilizar informação relativa à utilização de
+disco por parte de ficheiros e diretórios, considerando sempre que a opção 
+-l (ou --count-links) está ativa."*/
+
+bool all = false, bytes = false, count_links = true, dereference = false, separate_dirs = false;
 
 bool check_stat(struct stat stat_buf){
     if (S_ISLNK(stat_buf.st_mode)){
@@ -92,8 +111,8 @@ int main(int argc, char* argv[]){
                 //printf("Block size: %s\n", optarg);
                 break;
             case 'l':
-                count_links = true;
-                //printf("count_links\n");
+                // count_links is assumed to be always activated
+                // printf("count_links\n");
                 break;
             case 'L':
                 dereference = true;
