@@ -76,21 +76,20 @@ void printUsage() {
     printf("\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n");
 }
 
-
-//struct para opções longas funcionarem com getopt_long
-struct option const long_options[] = {
-    {"all", no_argument, NULL, 'a'},
-    {"bytes", no_argument, NULL, 'b'},
-    {"block-size", required_argument, 0, 'B'},
-    {"count-links", no_argument, NULL, 'l'},
-    {"dereference", no_argument, NULL, 'L'},
-    {"separate-dirs", no_argument, NULL, 'S'},
-    {"max-depth", required_argument, NULL, MAX_DEPTH}
-};
-
 char * getCommandLineArgs(int argc, char * argv[]) {
     char * path = malloc(MAX_STRING_SIZE);
     strcpy(path,".");
+
+    //struct para opções longas funcionarem com getopt_long
+    struct option const long_options[] = {
+        {"all", no_argument, NULL, 'a'},
+        {"bytes", no_argument, NULL, 'b'},
+        {"block-size", required_argument, 0, 'B'},
+        {"count-links", no_argument, NULL, 'l'},
+        {"dereference", no_argument, NULL, 'L'},
+        {"separate-dirs", no_argument, NULL, 'S'},
+        {"max-depth", required_argument, NULL, MAX_DEPTH}
+    };
 
     //lê todas as opções que forem passadas no argv (exceto o path)
     char c;
@@ -205,7 +204,7 @@ int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
     setLogFilename();
     installSignalHandler();
-    
+
     /*
     All children need to be changed into another process group so that SIGINT is sent only to the main process
     Doubt: Do we need to log all signals or only SIGINT's?
