@@ -43,6 +43,7 @@ char * logFilename;
 
 
 bool check_stat(struct stat stat_buf){
+    if (max_depth == 0) return false;
     if (S_ISLNK(stat_buf.st_mode)){
         if (all || dereference) return true;
     } 
@@ -60,12 +61,12 @@ void prepare_command(char **cmd, char* path){
     if (all) cmd[i++] = "-a";
     if (bytes) cmd[i++] = "-b";
     sprintf(tmp, "-B=%d", block_size);
-
     cmd[i++] = tmp;
     if (count_links) cmd[i++] = "-l";
     if (dereference) cmd[i++] = "-L";
     if (separate_dirs) cmd[i++] = "-s";
-    sprintf(tmp, "--max-depth=%d", max_depth - 1);
+    if (max_depth > 0) sprintf(tmp, "--max-depth=%d", max_depth - 1);
+    else sprintf(tmp, "--max-depth=%d", max_depth);
 
     cmd[i++] = tmp;
     cmd[i++] = path;
@@ -205,6 +206,12 @@ int main(int argc, char* argv[]){
     setLogFilename(); // i suggest that we create the logger functions in a separate file
     installSignalHandler();
 
+    int fd1[2], fd2[2], folder_size = 0;
+
+    // Quando lê file para enviar tamanho para adicionar ao tamanho da pasta
+    //pipe(fd1);
+    //pipe(fd2);
+
     /*
     All children need to be changed into another process group so that SIGINT is sent only to the main process
     Doubt: Do we need to log all signals or only SIGINT's?
@@ -214,7 +221,6 @@ int main(int argc, char* argv[]){
     struct dirent *direntp;
     struct stat stat_buf;
     char *newpath = malloc(MAX_STRING_SIZE);
-
 
     if ((dirp = opendir(path)) == NULL)
     {
@@ -231,30 +237,53 @@ int main(int argc, char* argv[]){
         }
         if (strcmp(direntp->d_name, "..") == 0) continue; 
 
+        int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
+        folder_size += file_space;
+        
         if (check_stat(stat_buf)){
             // Tamanho do bloco = 512, para ter tamanho em 4096, nº blocos/8
-            int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
             printf("%-7d %s\n", (int)ceil(file_space/block_size), newpath);
-
         } else if (S_ISDIR(stat_buf.st_mode)){
             if(strcmp(direntp->d_name, ".") != 0){
                 if (fork() > 0){
-                    int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
-                    printf("%-7d %s\n", (int)ceil(file_space/block_size), newpath);
                     wait(NULL);
-                } else if (max_depth > 1){
-                    char ** command = NULL;
-                    prepare_command(command, newpath);
+                } else{
+                    //Mantém sem o NULL porque senão dá erro na prepare_command e não faz em depth
+                    char ** command;
+                    prepare_command(command, newpath);  
                     closedir(dirp);
                     execv(command[0], command);
-                } else {
-                    exit(0);
                 }
+            } else {
+                folder_size += stat_buf.st_blksize * stat_buf.st_blocks/8;
             }
-
-
         }
     }
+    if (max_depth > 0) printf("%-7d %s\n", folder_size/block_size, path);
+/*
+    if (max_depth % 2){
+        close(fd1[0]);
+        close(fd2[1]);
+        write(fd1[1], &folder_size, 1);
+        int n, size;
+        if (max_depth > 1){
+            while ((n = read(fd2[0], &size, 1)) != 0){
+                folder_size += n;
+            }
+        }
+        printf("%-7d %s\n", folder_size, path);
+    } else {
+        close(fd2[0]);
+        close(fd1[1]);
+        write(fd2[1], &folder_size, 1);
+        int n, size;
+        if (max_depth > 1){
+            while ((n = read(fd1[0], &size, 1)) != 0){
+                folder_size += n;
+            }
+        }
+        printf("%-7d %s\n", folder_size, path);
+    }*/
     closedir(dirp);
     exit(0);
 }
