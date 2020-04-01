@@ -238,11 +238,12 @@ int main(int argc, char* argv[]){
         if (strcmp(direntp->d_name, "..") == 0) continue; 
 
         int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
-        folder_size += file_space;
+        
         
         if (check_stat(stat_buf)){
             // Tamanho do bloco = 512, para ter tamanho em 4096, nº blocos/8
             printf("%-7d %s\n", (int)ceil(file_space/block_size), newpath);
+            folder_size += file_space;
         } else if (S_ISDIR(stat_buf.st_mode)){
             if(strcmp(direntp->d_name, ".") != 0){
                 if (fork() > 0){
