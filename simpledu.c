@@ -32,15 +32,18 @@ bool check_stat(struct stat stat_buf){
 void prepare_command(char **cmd, char* path){
     char * tmp = malloc(MAX_STRING_SIZE);
     int i = 0;
+
     cmd[i++] = "simpledu";
     if (all) cmd[i++] = "-a";
     if (bytes) cmd[i++] = "-b";
     sprintf(tmp, "-B=%d", block_size);
+
     cmd[i++] = tmp;
     if (count_links) cmd[i++] = "-l";
     if (dereference) cmd[i++] = "-L";
     if (separate_dirs) cmd[i++] = "-s";
     sprintf(tmp, "--max-depth=%d", max_depth - 1);
+
     cmd[i++] = tmp;
     cmd[i++] = path;
     cmd[i] = NULL;
@@ -55,8 +58,7 @@ struct option const long_options[] = {
     {"count-links", no_argument, NULL, 'l'},
     {"dereference", no_argument, NULL, 'L'},
     {"separate-dirs", no_argument, NULL, 's'},
-    {"max-depth", required_argument, 0, MAX_DEPTH}
-
+    {"max-depth", required_argument, NULL, MAX_DEPTH}
 };
 
 int main(int argc, char* argv[]){
@@ -67,16 +69,19 @@ int main(int argc, char* argv[]){
     //bool para opções variadas
 
 
-    //lê todas as opções (-char) que forem passadas no argv
-    while((c = getopt_long(argc, argv, "abB:lLS", long_options, NULL)) != -1){
+    //lê todas as opções que forem passadas no argv
+    while((c = getopt_long(argc, argv, "abB:lLs", long_options, NULL)) != -1){
         switch(c){
             case 0:     //long option
+                printf("ZERO\n");
                 break;
             case 'a':
                 all = true;
+                ///printf("all\n");
                 break;
             case 'b':
                 bytes = true;
+                //printf("bytes\n");
                 break;
             case 'B':
                 block_size = atoi(optarg);
@@ -84,15 +89,19 @@ int main(int argc, char* argv[]){
                     printf("Block-size can't be negative.\n");
                     exit(2);
                 }
+                //printf("Block size: %s\n", optarg);
                 break;
             case 'l':
                 count_links = true;
+                //printf("count_links\n");
                 break;
             case 'L':
                 dereference = true;
+                //printf("dereference\n");
                 break;
-            case 'S':
+            case 's':
                 separate_dirs = true;
+                //printf("separate_dirs\n");
                 break;
             case MAX_DEPTH:
                 max_depth = atoi(optarg);
@@ -100,6 +109,7 @@ int main(int argc, char* argv[]){
                     printf("Max depth can't be negative.\n");
                     exit(2);
                 }
+                //printf("Max depth = %d\n", max_depth);
                 break;
             default:
                 break;
