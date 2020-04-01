@@ -80,7 +80,7 @@ struct option const long_options[] = {
     {"block-size", required_argument, 0, 'B'},
     {"count-links", no_argument, NULL, 'l'},
     {"dereference", no_argument, NULL, 'L'},
-    {"separate-dirs", no_argument, NULL, 's'},
+    {"separate-dirs", no_argument, NULL, 'S'},
     {"max-depth", required_argument, NULL, MAX_DEPTH}
 };
 
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]){
 
 
     //lê todas as opções que forem passadas no argv
-    while((c = getopt_long(argc, argv, "abB:lLs", long_options, NULL)) != -1){
+    while((c = getopt_long(argc, argv, "abB:lLS", long_options, NULL)) != -1){
         switch(c){
             case 0:     //long option
                 printf("ZERO\n");
@@ -122,7 +122,7 @@ int main(int argc, char* argv[]){
                 dereference = true;
                 //printf("dereference\n");
                 break;
-            case 's':
+            case 'S':
                 separate_dirs = true;
                 //printf("separate_dirs\n");
                 break;
@@ -160,6 +160,7 @@ int main(int argc, char* argv[]){
     struct dirent *direntp;
     struct stat stat_buf;
     char *newpath = malloc(MAX_STRING_SIZE);
+
 
     if ((dirp = opendir(path)) == NULL)
     {
