@@ -130,15 +130,21 @@ int main(int argc, char* argv[]){
                 }
                 //printf("Max depth = %d\n", max_depth);
                 break;
+            case '?':
+                printf("Can't identify\n");
+                break;
             default:
                 break;
         }
-
     }
 
     int i = 1;
     while(i < argc && argv[i] != NULL){
-        if (argv[i][0] != '-'){
+        if (strcmp(argv[i], "-B") == 0 || strcmp(argv[i], "--block-size")== 0 || strcmp(argv[i], "--max-depth") == 0) {
+            // when it's -B, --block-size and --max-depth the value will be separated by space
+            i++;
+        } else if (argv[i][0] != '-'){
+            //printf("Path: %s\n", argv[i]);
             path = argv[i];
             break;
         }
