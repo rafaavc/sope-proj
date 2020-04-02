@@ -15,6 +15,8 @@
 
 #define MAX_STRING_SIZE 512
 #define MAX_DEPTH 'm'
+#define WRITE 1
+#define READ 0
 
 
 /*
@@ -42,16 +44,6 @@ bool all = false, bytes = false, count_links = true, dereference = false, separa
 char * logFilename;
 
 
-bool check_stat(struct stat stat_buf){
-    if (S_ISLNK(stat_buf.st_mode)){
-        if (all || dereference) return true;
-    } 
-    else if(S_ISREG(stat_buf.st_mode)){
-        if (all) return true;
-    }
-    return false;
-}
-
 void prepare_command(char **cmd, char* path){
     char * tmp = malloc(MAX_STRING_SIZE);
     int i = 0;
@@ -60,12 +52,12 @@ void prepare_command(char **cmd, char* path){
     if (all) cmd[i++] = "-a";
     if (bytes) cmd[i++] = "-b";
     sprintf(tmp, "-B=%d", block_size);
-
     cmd[i++] = tmp;
     if (count_links) cmd[i++] = "-l";
     if (dereference) cmd[i++] = "-L";
-    if (separate_dirs) cmd[i++] = "-s";
-    sprintf(tmp, "--max-depth=%d", max_depth - 1);
+    if (separate_dirs) cmd[i++] = "-S";
+    if (max_depth > 0) sprintf(tmp, "--max-depth=%d", max_depth - 1);
+    else sprintf(tmp, "--max-depth=%d", max_depth);
 
     cmd[i++] = tmp;
     cmd[i++] = path;
@@ -206,6 +198,10 @@ int main(int argc, char* argv[]){
     setLogFilename(); // i suggest that we create the logger functions in a separate file
     installSignalHandler();
 
+    int folder_size = 0;
+
+    
+
     /*
     All children need to be changed into another process group so that SIGINT is sent only to the main process
     Doubt: Do we need to log all signals or only SIGINT's?
@@ -215,7 +211,6 @@ int main(int argc, char* argv[]){
     struct dirent *direntp;
     struct stat stat_buf;
     char *newpath = malloc(MAX_STRING_SIZE);
-
 
     if ((dirp = opendir(path)) == NULL)
     {
@@ -232,30 +227,53 @@ int main(int argc, char* argv[]){
         }
         if (strcmp(direntp->d_name, "..") == 0) continue; 
 
-        if (check_stat(stat_buf)){
-            // Tamanho do bloco = 512, para ter tamanho em 4096, nº blocos/8
-            int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
-            printf("%-7d %s\n", (int)ceil(file_space/block_size), newpath);
-
+        int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
+        
+        
+        if (S_ISREG(stat_buf.st_mode)){
+            if (all && max_depth != 0){
+                char temp[100];
+                sprintf(temp, "%-7d %s\n", (int)ceil(file_space/block_size), newpath);
+                write(STDOUT_FILENO, &temp, strlen(temp) + 1);
+            } 
+            if (separate_dirs){
+                folder_size += file_space;
+            }
         } else if (S_ISDIR(stat_buf.st_mode)){
             if(strcmp(direntp->d_name, ".") != 0){
                 if (fork() > 0){
-                    int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
-                    printf("%-7d %s\n", (int)ceil(file_space/block_size), newpath);
                     wait(NULL);
-                } else if (max_depth > 1){
-                    char ** command = NULL;
+                } else {
+                    //Mantém sem o NULL porque senão dá erro na prepare_command e não faz em depth
+                    char *command[100];
                     prepare_command(command, newpath);
                     closedir(dirp);
                     execv(command[0], command);
-                } else {
-                    exit(0);
                 }
+            } else {
+                folder_size += file_space;
             }
-
-
+        } else if (S_ISLNK(stat_buf.st_mode)){
+            if ((all && dereference) || dereference){
+                if (fork() > 0){
+                    wait(NULL);
+                } else {
+                    //Mantém sem o NULL porque senão dá erro na prepare_command e não faz em depth
+                    char *command[100];
+                    prepare_command(command, newpath);
+                    closedir(dirp);
+                    execv(command[0], command);
+                }
+            } else if (all){
+                char temp[100];
+                sprintf(temp, "%-7d %s\n", (int)ceil(file_space/block_size), newpath);
+                write(STDOUT_FILENO, &temp, strlen(temp) + 1);
+                folder_size += file_space;
+            }
         }
     }
+    if (max_depth > 0) printf("%-7d %s\n", folder_size/block_size, path);
+
     closedir(dirp);
     exit(0);
 }
