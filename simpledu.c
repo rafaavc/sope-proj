@@ -200,6 +200,7 @@ void installSignalHandler() {
     }
 }
 
+// TODO check return codes
 int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
     setLogFilename(); // i suggest that we create the logger functions in a separate file
