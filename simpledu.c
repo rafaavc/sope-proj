@@ -192,6 +192,14 @@ void installSignalHandler() {
     }
 }
 
+/*checkDirectory(char * path) {
+
+}*/
+
+
+
+
+
 // TODO check return codes
 int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
@@ -217,20 +225,54 @@ int main(int argc, char* argv[]){
         perror(path);
         exit(2);
     }
+
+    /* struct dirent {
+        ino_t          d_ino;        Inode number 
+        off_t          d_off;        Not an offset; see below 
+        unsigned short d_reclen;     Length of this record 
+        unsigned char  d_type;       Type of file; not supported by all filesystem types 
+        char           d_name[256];  Null-terminated filename 
+    }; */
     while ((direntp = readdir( dirp)) != NULL)
     {
         sprintf(newpath, "%s/%s", path, direntp->d_name);
 
+        /* struct stat {
+            dev_t     st_dev;      ID of device containing file 
+            ino_t     st_ino;      inode number 
+            mode_t    st_mode;     protection 
+            nlink_t   st_nlink;    number of hard links 
+            uid_t     st_uid;      user ID of owner 
+            gid_t     st_gid;      group ID of owner 
+            dev_t     st_rdev;     device ID (if special file) 
+            off_t     st_size;     total size, in bytes 
+            blksize_t st_blksize;  blocksize for file system I/O 
+            blkcnt_t  st_blocks;   number of 512B blocks allocated 
+            time_t    st_atime;    time of last access 
+            time_t    st_mtime;    time of last modification 
+            time_t    st_ctime;    time of last status change 
+        };
+        returns information about the file in the struct stat format */
         if (lstat(newpath, &stat_buf) != 0) {
             perror(path);
             exit(3);
         }
+
+        // In case it refers to parent directory
         if (strcmp(direntp->d_name, "..") == 0) continue; 
 
+        // Maybe 
         int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
         
-        
-        if (S_ISREG(stat_buf.st_mode)){
+        /* S_ISREG(m) is it a regular file?
+        S_ISDIR(m) directory?
+        S_ISCHR(m) character device?
+        S_ISBLK(m) block device?
+        S_ISFIFO(m) FIFO (named pipe)?
+        S_ISLNK(m) symbolic link? (Not in POSIX.1-1996.)
+        S_ISSOCK(m) socket? (Not in POSIX.1-1996.) */
+
+        if (S_ISREG(stat_buf.st_mode)){ // Regular file
             if (all && max_depth != 0){
                 char temp[100];
                 sprintf(temp, "%-7d %s\n", (int)ceil(file_space/block_size), newpath);
@@ -239,9 +281,9 @@ int main(int argc, char* argv[]){
             if (separate_dirs){
                 folder_size += file_space;
             }
-        } else if (S_ISDIR(stat_buf.st_mode)){
+        } else if (S_ISDIR(stat_buf.st_mode)){ // Directory
             if(strcmp(direntp->d_name, ".") != 0){
-                if (fork() > 0){
+                if (fork() > 0) {
                     wait(NULL);
                 } else {
                     //Mantém sem o NULL porque senão dá erro na prepare_command e não faz em depth
@@ -253,7 +295,7 @@ int main(int argc, char* argv[]){
             } else {
                 folder_size += file_space;
             }
-        } else if (S_ISLNK(stat_buf.st_mode)){
+        } else if (S_ISLNK(stat_buf.st_mode)){ // Symbolic link
             if ((all && dereference) || dereference){
                 if (fork() > 0){
                     wait(NULL);
