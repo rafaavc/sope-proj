@@ -139,7 +139,7 @@ char * getCommandLineArgs(int argc, char * argv[]) {
     int i = 1;
     while(i < argc && argv[i] != NULL){
         if (strcmp(argv[i], "-B") == 0 || strcmp(argv[i], "--block-size")== 0 || strcmp(argv[i], "--max-depth") == 0) {
-            // when it's -B, --block-size and --max-depth the value will be separated by space
+            // when it's -B, --block-size and --max-depth the value may be separated by space
             i++;
         } else if (argv[i][0] != '-'){
             //printf("Path: %s\n", argv[i]);
@@ -192,33 +192,34 @@ void installSignalHandler() {
     }
 }
 
-/*checkDirectory(char * path) {
+void printInfoLine(int size, char * path) {
+    printf("%-7d %s\n", size, path);
+}
 
-}*/
+int calculateFileSize(struct stat *stat_buf) {
+    int fileSize = ceil(stat_buf->st_blksize * stat_buf->st_blocks/8);
+    return ceil(fileSize/block_size);
+}
 
 
-
-
-
-// TODO check return codes
-int main(int argc, char* argv[]){
-    char *path = getCommandLineArgs(argc, argv); 
-    setLogFilename(); // i suggest that we create the logger functions in a separate file
-    installSignalHandler();
-
-    int folder_size = 0;
-
-    
-
-    /*
-    All children need to be changed into another process group so that SIGINT is sent only to the main process
-    Doubt: Do we need to log all signals or only SIGINT's?
-    */
-
+void checkDirectory(bool masterProcess, char * path, int currentDepth, int outputFD) {
     DIR *dirp;
     struct dirent *direntp;
     struct stat stat_buf;
     char *newpath = malloc(MAX_STRING_SIZE);
+    char buffer[MAX_STRING_SIZE];
+    int currentDirSize = 0;
+    int fileSize;
+    pid_t pid;
+
+
+    if (masterProcess) {
+        if (lstat(path, &stat_buf) != 0) {
+            perror(path);
+            exit(3);
+        }
+        currentDirSize += calculateFileSize(&stat_buf);
+    }
 
     if ((dirp = opendir(path)) == NULL)
     {
@@ -233,8 +234,14 @@ int main(int argc, char* argv[]){
         unsigned char  d_type;       Type of file; not supported by all filesystem types 
         char           d_name[256];  Null-terminated filename 
     }; */
+
     while ((direntp = readdir( dirp)) != NULL)
     {
+        fileSize = 0;
+
+        // In case it refers to parent directory or same directory
+        if (strcmp(direntp->d_name, "..") == 0 || strcmp(direntp->d_name, ".") == 0) continue; 
+        
         sprintf(newpath, "%s/%s", path, direntp->d_name);
 
         /* struct stat {
@@ -257,13 +264,9 @@ int main(int argc, char* argv[]){
             perror(path);
             exit(3);
         }
-
-        // In case it refers to parent directory
-        if (strcmp(direntp->d_name, "..") == 0) continue; 
-
-        // Maybe 
-        int file_space = stat_buf.st_blksize * stat_buf.st_blocks/8;
         
+        fileSize = calculateFileSize(&stat_buf);
+
         /* S_ISREG(m) is it a regular file?
         S_ISDIR(m) directory?
         S_ISCHR(m) character device?
@@ -272,50 +275,83 @@ int main(int argc, char* argv[]){
         S_ISLNK(m) symbolic link? (Not in POSIX.1-1996.)
         S_ISSOCK(m) socket? (Not in POSIX.1-1996.) */
 
-        if (S_ISREG(stat_buf.st_mode)){ // Regular file
-            if (all && max_depth != 0){
-                char temp[100];
-                sprintf(temp, "%-7d %s\n", (int)ceil(file_space/block_size), newpath);
-                write(STDOUT_FILENO, &temp, strlen(temp) + 1);
-            } 
-            if (separate_dirs){
-                folder_size += file_space;
+        if (S_ISDIR(stat_buf.st_mode) || (S_ISLNK(stat_buf.st_mode) && dereference)) {
+            int pipefd[2];
+            if (pipe(pipefd) == -1) {
+                printf("ERROR PIPEING\n");
+                exit(6);
             }
-        } else if (S_ISDIR(stat_buf.st_mode)){ // Directory
-            if(strcmp(direntp->d_name, ".") != 0){
-                if (fork() > 0) {
-                    wait(NULL);
-                } else {
-                    //Mantém sem o NULL porque senão dá erro na prepare_command e não faz em depth
-                    char *command[100];
-                    prepare_command(command, newpath);
-                    closedir(dirp);
-                    execv(command[0], command);
-                }
+
+            if ((pid = fork()) > 0) {
+                close(pipefd[WRITE]);
+                int status;
+                waitpid(pid, &status, 0);
+
+                read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+                fileSize += atoi(buffer); // very important that it is +=
+                
+                printInfoLine(fileSize, newpath);
+                currentDirSize += fileSize;
+
+            } else if (pid == 0) {
+                close(pipefd[READ]);
+                checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
+                exit(0);
             } else {
-                folder_size += file_space;
+                printf("Error forking\n");
+                exit(5);
             }
-        } else if (S_ISLNK(stat_buf.st_mode)){ // Symbolic link
-            if ((all && dereference) || dereference){
-                if (fork() > 0){
-                    wait(NULL);
-                } else {
-                    //Mantém sem o NULL porque senão dá erro na prepare_command e não faz em depth
-                    char *command[100];
-                    prepare_command(command, newpath);
-                    closedir(dirp);
-                    execv(command[0], command);
-                }
-            } else if (all){
-                char temp[100];
-                sprintf(temp, "%-7d %s\n", (int)ceil(file_space/block_size), newpath);
-                write(STDOUT_FILENO, &temp, strlen(temp) + 1);
-                folder_size += file_space;
+        } else {
+            if (currentDepth > 0 && all) {
+                printInfoLine(fileSize, newpath);
             }
+            currentDirSize += fileSize;
         }
     }
-    if (max_depth > 0) printf("%-7d %s\n", folder_size/block_size, path);
+
+    if (outputFD != 0) {
+        char *b = malloc(MAX_STRING_SIZE);
+        sprintf(b, "%d", currentDirSize);
+        write(outputFD, b, sizeof(b));
+    }
 
     closedir(dirp);
+}
+
+// TODO check return codes
+int main(int argc, char* argv[]){
+    char *path = getCommandLineArgs(argc, argv); 
+    setLogFilename(); // i suggest that we create the logger functions in a separate file
+    installSignalHandler();
+    /*
+    All children need to be changed into another process group so that SIGINT is sent only to the main process
+    Doubt: Do we need to log all signals or only SIGINT's?
+    */
+    int pipefd[2];
+    pid_t pid;
+    char buffer[MAX_STRING_SIZE];
+
+    if (pipe(pipefd) == -1) {
+        printf("ERROR PIPEING\n");
+        exit(6);
+    }
+
+    if ((pid = fork()) > 0) {
+        close(pipefd[WRITE]);
+        wait(NULL);
+
+        read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+        int dirSize = atoi(buffer);
+
+        printInfoLine(dirSize, path);
+    } else if (pid == 0) {
+        close(pipefd[READ]);
+        checkDirectory(true, path, max_depth, pipefd[WRITE]);
+        exit(0);
+    } else {
+        printf("Error forking\n");
+        exit(5);
+    }
+
     exit(0);
 }
