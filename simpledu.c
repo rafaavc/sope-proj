@@ -43,6 +43,8 @@ bool all = false, bytes = false, count_links = true, dereference = false, separa
 
 char * logFilename;
 
+int childrenPGID = 0;
+
 
 void prepare_command(char **cmd, char* path){
     char * tmp = malloc(MAX_STRING_SIZE);
@@ -160,19 +162,21 @@ void setLogFilename() {
 
 void signalHandler(int signo) {
     if (signo == SIGINT) {
-        char* opt;
+        char* opt = malloc(MAX_STRING_SIZE);
 
-        // Send SIGSTOP to children (use int killpg(int pgrp, int sig) to send the children to the pgroup created)
+        killpg(childrenPGID, SIGSTOP);
         while(true) {
             printf("Are you sure you want to terminate execution? (Y/N) ");
             scanf("%s", opt);
             if (opt[0] == 'Y' || opt[0] == 'y') {
-                // Send SIGTERM to children
                 printf("Terminating execution.\n");
+                killpg(childrenPGID, SIGTERM);
+                exit(7);
                 break;
             } else if (opt[0] == 'N' || opt[0] == 'n') {
                 // Send SIGCONT to children
                 printf("Resuming execution.\n");
+                killpg(childrenPGID, SIGCONT);
                 break;
             }
         }
@@ -224,6 +228,8 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     int currentDirSize = 0;
     int fileSize;
     pid_t pid;
+
+    printf("Depth %d: %d\n", currentDepth, getpgid(getpid()));
 
 
     if (masterProcess) {
@@ -325,11 +331,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
         }
     }
 
-    if (outputFD != 0) {
-        char *b = malloc(MAX_STRING_SIZE);
-        sprintf(b, "%d", currentDirSize);
-        write(outputFD, b, sizeof(b));
-    }
+
+    char *b = malloc(MAX_STRING_SIZE);
+    sprintf(b, "%d", currentDirSize);
+    write(outputFD, b, sizeof(b));
 
     closedir(dirp);
 }
@@ -339,6 +344,7 @@ int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
     setLogFilename(); // i suggest that we create the logger functions in a separate file
     installSignalHandler();
+    printf("Master process: %d\n", getpgid(getpid()));
     /*
     All children need to be changed into another process group so that SIGINT is sent only to the main process
     Doubt: Do we need to log all signals or only SIGINT's?
@@ -354,6 +360,8 @@ int main(int argc, char* argv[]){
 
     if ((pid = fork()) > 0) {
         close(pipefd[WRITE]);
+        printf("Master process: %d\n", getpgid(getpid()));
+        childrenPGID = pid;
         wait(NULL);
 
         read(pipefd[READ], &buffer, MAX_STRING_SIZE);
@@ -362,6 +370,7 @@ int main(int argc, char* argv[]){
         printInfoLine(dirSize, path);
     } else if (pid == 0) {
         close(pipefd[READ]);
+        setpgid(0, 0);
         checkDirectory(true, path, max_depth, pipefd[WRITE]);
         exit(0);
     } else {
