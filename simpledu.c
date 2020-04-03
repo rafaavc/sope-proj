@@ -4,9 +4,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <termios.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <getopt.h>
 #include <stdbool.h>
 #include <math.h>
@@ -166,7 +164,7 @@ void signalHandler(int signo) {
 
         killpg(childrenPGID, SIGSTOP);
         while(true) {
-            printf("Are you sure you want to terminate execution? (Y/N) ");
+            printf("\nAre you sure you want to terminate execution? (Y/N) ");
             scanf("%s", opt);
             if (opt[0] == 'Y' || opt[0] == 'y') {
                 printf("Terminating execution.\n");
@@ -377,6 +375,8 @@ int main(int argc, char* argv[]){
         printf("Error forking\n");
         exit(5);
     }
+
+    logN();
 
     exit(0);
 }
