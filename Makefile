@@ -17,5 +17,5 @@ $(PROGNAME): $(OBJ)
 
 .PHONY: clean
 
-clean: $(OBJ)
-	rm $(OBJ) $(PROGNAME)
+clean:
+	rm -f -r $(OBJDIR) $(PROGNAME)
