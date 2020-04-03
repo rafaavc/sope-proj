@@ -229,8 +229,6 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     int fileSize;
     pid_t pid;
 
-    printf("Depth %d: %d\n", currentDepth, getpgid(getpid()));
-
 
     if (masterProcess) {
         if (lstat(path, &stat_buf) != 0) {
@@ -344,9 +342,7 @@ int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
     setLogFilename(); // i suggest that we create the logger functions in a separate file
     installSignalHandler();
-    printf("Master process: %d\n", getpgid(getpid()));
     /*
-    All children need to be changed into another process group so that SIGINT is sent only to the main process
     Doubt: Do we need to log all signals or only SIGINT's?
     */
     int pipefd[2];
@@ -360,7 +356,6 @@ int main(int argc, char* argv[]){
 
     if ((pid = fork()) > 0) {
         close(pipefd[WRITE]);
-        printf("Master process: %d\n", getpgid(getpid()));
         childrenPGID = pid;
         wait(NULL);
 
