@@ -161,7 +161,7 @@ void setLogFilename() {
 }
 
 void signalHandler(int signo) {
-    if (signo == SIGINT) {
+    if (signo == SIGINT && childrenPGID != 0) {
         char* opt = malloc(MAX_STRING_SIZE);
 
         killpg(childrenPGID, SIGSTOP);
