@@ -32,7 +32,7 @@ apresentada pelo comando du correntemente instalado. Por omissão, o comando du:
     - não restringe os níveis de profundidade na estrutura de diretórios.""
 */
 
-int block_size = 1024, max_depth = __INT_MAX__;
+int block_size = -1, max_depth = __INT_MAX__;
 
 /*count_links is true because the specifications says "A ferramenta simpledu, como 
 exemplificado, deve disponibilizar informação relativa à utilização de
@@ -197,8 +197,21 @@ void printInfoLine(int size, char * path) {
 }
 
 int calculateFileSize(struct stat *stat_buf) {
-    int fileSize = ceil(stat_buf->st_blksize * stat_buf->st_blocks/8);
-    return ceil(fileSize/block_size);
+    int fileSize = 0;
+    if (bytes) { 
+        fileSize = stat_buf->st_size;
+        if (block_size == -1){              // by default block_size = -1 porque quando se usa -b sem -B não se divide por 1024
+            return fileSize;
+        } else {
+            return fileSize/block_size;
+        }
+    }
+    else fileSize = ceil(stat_buf->st_blocks * 512);
+
+    if (block_size == -1)
+        return ceil(fileSize/1024);
+    else 
+        return ceil(fileSize/block_size);
 }
 
 
@@ -290,8 +303,11 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 read(pipefd[READ], &buffer, MAX_STRING_SIZE);
                 fileSize += atoi(buffer); // very important that it is +=
                 
-                printInfoLine(fileSize, newpath);
-                currentDirSize += fileSize;
+                if (currentDepth > 0)
+                    printInfoLine(fileSize, newpath);
+                
+                if (!separate_dirs)
+                    currentDirSize += fileSize;
 
             } else if (pid == 0) {
                 close(pipefd[READ]);
