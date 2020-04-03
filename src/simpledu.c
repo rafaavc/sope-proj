@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <signal.h>
+#include "logger.h"
 
 
 #define MAX_STRING_SIZE 512
@@ -375,8 +376,6 @@ int main(int argc, char* argv[]){
         printf("Error forking\n");
         exit(5);
     }
-
-    logN();
 
     exit(0);
 }
