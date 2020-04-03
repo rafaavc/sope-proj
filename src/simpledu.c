@@ -149,6 +149,16 @@ char * getCommandLineArgs(int argc, char * argv[]) {
         }
         i++;
     }
+
+    if (path[strlen(path)-1] == '/') {
+        for (int i = strlen(path)-1; i >= 0; i--) {
+            if (path[i] == '/' && path[i-1] == '/') {
+                path[i] = '\0';
+            } else {
+                break;
+            }
+        }
+    }
     return path;
 }
 
@@ -227,6 +237,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     int currentDirSize = 0;
     int fileSize;
     pid_t pid;
+    bool jumpDir = false;
 
 
     if (masterProcess) {
@@ -235,98 +246,107 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             exit(3);
         }
         currentDirSize += calculateFileSize(&stat_buf);
-    }
-
-    if ((dirp = opendir(path)) == NULL)
-    {
-        perror(path);
-        exit(2);
-    }
-
-    /* struct dirent {
-        ino_t          d_ino;        Inode number 
-        off_t          d_off;        Not an offset; see below 
-        unsigned short d_reclen;     Length of this record 
-        unsigned char  d_type;       Type of file; not supported by all filesystem types 
-        char           d_name[256];  Null-terminated filename 
-    }; */
-
-    while ((direntp = readdir( dirp)) != NULL)
-    {
-        fileSize = 0;
-
-        // In case it refers to parent directory or same directory
-        if (strcmp(direntp->d_name, "..") == 0 || strcmp(direntp->d_name, ".") == 0) continue; 
-        
-        sprintf(newpath, "%s/%s", path, direntp->d_name);
-
-        /* struct stat {
-            dev_t     st_dev;      ID of device containing file 
-            ino_t     st_ino;      inode number 
-            mode_t    st_mode;     protection 
-            nlink_t   st_nlink;    number of hard links 
-            uid_t     st_uid;      user ID of owner 
-            gid_t     st_gid;      group ID of owner 
-            dev_t     st_rdev;     device ID (if special file) 
-            off_t     st_size;     total size, in bytes 
-            blksize_t st_blksize;  blocksize for file system I/O 
-            blkcnt_t  st_blocks;   number of 512B blocks allocated 
-            time_t    st_atime;    time of last access 
-            time_t    st_mtime;    time of last modification 
-            time_t    st_ctime;    time of last status change 
-        };
-        returns information about the file in the struct stat format */
-        if (lstat(newpath, &stat_buf) != 0) {
-            perror(path);
-            exit(3);
+        if (S_ISLNK(stat_buf.st_mode) && !dereference) {
+            jumpDir = true;
         }
-        
-        fileSize = calculateFileSize(&stat_buf);
+    }
 
-        /* S_ISREG(m) is it a regular file?
-        S_ISDIR(m) directory?
-        S_ISCHR(m) character device?
-        S_ISBLK(m) block device?
-        S_ISFIFO(m) FIFO (named pipe)?
-        S_ISLNK(m) symbolic link? (Not in POSIX.1-1996.)
-        S_ISSOCK(m) socket? (Not in POSIX.1-1996.) */
+    if (!jumpDir) {
+        if ((dirp = opendir(path)) == NULL)
+        {
+            perror(path);
+            exit(2);
+        }
 
-        if (S_ISDIR(stat_buf.st_mode) || (S_ISLNK(stat_buf.st_mode) && dereference)) {
-            int pipefd[2];
-            if (pipe(pipefd) == -1) {
-                printf("ERROR PIPEING\n");
-                exit(6);
-            }
+        /* struct dirent {
+            ino_t          d_ino;        Inode number 
+            off_t          d_off;        Not an offset; see below 
+            unsigned short d_reclen;     Length of this record 
+            unsigned char  d_type;       Type of file; not supported by all filesystem types 
+            char           d_name[256];  Null-terminated filename 
+        }; */
 
-            if ((pid = fork()) > 0) {
-                close(pipefd[WRITE]);
-                int status;
-                waitpid(pid, &status, 0);
+        while ((direntp = readdir( dirp)) != NULL)
+        {
+            fileSize = 0;
 
-                read(pipefd[READ], &buffer, MAX_STRING_SIZE);
-                close(pipefd[READ]);
-                fileSize += atoi(buffer); // very important that it is +=
-                
-                if (currentDepth > 0)
-                    printInfoLine(fileSize, newpath);
-                
-                if (!separate_dirs)
-                    currentDirSize += fileSize;
-
-            } else if (pid == 0) {
-                close(pipefd[READ]);
-                checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
-                close(pipefd[WRITE]);
-                exit(0);
+            // In case it refers to parent directory or same directory
+            if (strcmp(direntp->d_name, "..") == 0 || strcmp(direntp->d_name, ".") == 0) continue; 
+            
+            if (path[strlen(path)-1] == '/') {
+                sprintf(newpath, "%s%s", path, direntp->d_name);
             } else {
-                printf("Error forking\n");
-                exit(5);
+                sprintf(newpath, "%s/%s", path, direntp->d_name);
             }
-        } else {
-            if (currentDepth > 0 && all) {
-                printInfoLine(fileSize, newpath);
+
+            /* struct stat {
+                dev_t     st_dev;      ID of device containing file 
+                ino_t     st_ino;      inode number 
+                mode_t    st_mode;     protection 
+                nlink_t   st_nlink;    number of hard links 
+                uid_t     st_uid;      user ID of owner 
+                gid_t     st_gid;      group ID of owner 
+                dev_t     st_rdev;     device ID (if special file) 
+                off_t     st_size;     total size, in bytes 
+                blksize_t st_blksize;  blocksize for file system I/O 
+                blkcnt_t  st_blocks;   number of 512B blocks allocated 
+                time_t    st_atime;    time of last access 
+                time_t    st_mtime;    time of last modification 
+                time_t    st_ctime;    time of last status change 
+            };
+            returns information about the file in the struct stat format */
+            if (lstat(newpath, &stat_buf) != 0) {
+                perror(path);
+                exit(3);
             }
-            currentDirSize += fileSize;
+            
+            fileSize = calculateFileSize(&stat_buf);
+
+            /* S_ISREG(m) is it a regular file?
+            S_ISDIR(m) directory?
+            S_ISCHR(m) character device?
+            S_ISBLK(m) block device?
+            S_ISFIFO(m) FIFO (named pipe)?
+            S_ISLNK(m) symbolic link? (Not in POSIX.1-1996.)
+            S_ISSOCK(m) socket? (Not in POSIX.1-1996.) */
+
+            if (S_ISDIR(stat_buf.st_mode) || (S_ISLNK(stat_buf.st_mode) && dereference)) {
+                int pipefd[2];
+                if (pipe(pipefd) == -1) {
+                    printf("ERROR PIPEING\n");
+                    exit(6);
+                }
+
+                if ((pid = fork()) > 0) {
+                    close(pipefd[WRITE]);
+                    int status;
+                    waitpid(pid, &status, 0);
+
+                    read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+                    close(pipefd[READ]);
+                    fileSize += atoi(buffer); // very important that it is +=
+                    
+                    if (currentDepth > 0)
+                        printInfoLine(fileSize, newpath);
+                    
+                    if (!separate_dirs)
+                        currentDirSize += fileSize;
+
+                } else if (pid == 0) {
+                    close(pipefd[READ]);
+                    checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
+                    close(pipefd[WRITE]);
+                    exit(0);
+                } else {
+                    printf("Error forking\n");
+                    exit(5);
+                }
+            } else {
+                if (currentDepth > 0 && all) {
+                    printInfoLine(fileSize, newpath);
+                }
+                currentDirSize += fileSize;
+            }
         }
     }
 
