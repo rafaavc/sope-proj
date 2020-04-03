@@ -305,6 +305,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 waitpid(pid, &status, 0);
 
                 read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+                close(pipefd[READ]);
                 fileSize += atoi(buffer); // very important that it is +=
                 
                 if (currentDepth > 0)
@@ -316,6 +317,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             } else if (pid == 0) {
                 close(pipefd[READ]);
                 checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
+                close(pipefd[WRITE]);
                 exit(0);
             } else {
                 printf("Error forking\n");
@@ -357,9 +359,11 @@ int main(int argc, char* argv[]){
     if ((pid = fork()) > 0) {
         close(pipefd[WRITE]);
         childrenPGID = pid;
-        wait(NULL);
+        int status;
+        waitpid(pid, &status, 0);
 
         read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+        close(pipefd[READ]);
         int dirSize = atoi(buffer);
 
         printInfoLine(dirSize, path);
@@ -367,6 +371,7 @@ int main(int argc, char* argv[]){
         close(pipefd[READ]);
         setpgid(0, 0);
         checkDirectory(true, path, max_depth, pipefd[WRITE]);
+        close(pipefd[WRITE]);
         exit(0);
     } else {
         printf("Error forking\n");
