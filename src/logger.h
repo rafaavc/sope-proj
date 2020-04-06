@@ -39,8 +39,8 @@ com 2 casas decimais, tendo como referência o instante em que o programa começ
     o EXIT – o código de saída (exit status);
     o RECV_SIGNAL – o sinal recebido (por exemplo, SIGINT);
     o SEND_SIGNAL – o sinal enviado seguido do pid do processo a quem se destina;
-    o RECV_PIPE – a mensagem enviada;
-    o SEND_PIPE – a mensagem recebida;
+    o RECV_PIPE – a mensagem recebida;
+    o SEND_PIPE – a mensagem enviada;
     o ENTRY – número de bytes (ou blocos) seguido do caminho.
 */
 

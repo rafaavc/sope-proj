@@ -43,6 +43,7 @@ bool all = false, bytes = false, count_links = true, dereference = false, separa
 char * logFilename;
 
 int childrenPGID = 0;
+double instant = 0;
 
 void printUsage() {
     printf("\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n");
@@ -150,9 +151,9 @@ void setLogFilename() {
 
 void signalHandler(int signo) {
     if (signo == SIGINT && childrenPGID != 0) {
-        logEVENT(RECV_SIGNAL, 10, getpid(), "SIGINT");
+        logEVENT(RECV_SIGNAL, instant, getpid(), "SIGINT");
         killpg(childrenPGID, SIGSTOP);
-        logEVENT(SEND_SIGNAL, 10, getpid(), "SIGSTOP");
+        logEVENT(SEND_SIGNAL, instant, getpid(), "SIGSTOP");
         while(true) {
             char* opt = malloc(MAX_STRING_SIZE);
             printf("\nAre you sure you want to terminate execution? (Y/N) ");
@@ -163,14 +164,14 @@ void signalHandler(int signo) {
             if (optc == 'Y' || optc == 'y') {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
-                logEVENT(SEND_SIGNAL, 10, getpid(), "SIGTERM");
+                logEVENT(SEND_SIGNAL, instant, getpid(), "SIGTERM");
                 exit(7);
                 break;
             } else if (optc == 'N' || optc == 'n') {
                 // Send SIGCONT to children
                 printf("Resuming execution.\n");
                 killpg(childrenPGID, SIGCONT);
-                logEVENT(SEND_SIGNAL, 10, getpid(), "SIGCONT");
+                logEVENT(SEND_SIGNAL, instant, getpid(), "SIGCONT");
                 break;
             }
         }
@@ -192,6 +193,10 @@ void installSignalHandler() {
 
 void printInfoLine(int size, char * path) {
     printf("%-7d %s\n", size, path);
+    char* str = malloc(MAX_STRING_SIZE);
+    sprintf(str, "%-7d %s", size, path);
+    logEVENT(SEND_PIPE, instant, getpid(), str);
+    free(str);
 }
 
 int calculateFileSize(struct stat *stat_buf) {
@@ -308,6 +313,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     waitpid(pid, &status, 0);
 
                     read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+                    logEVENT(RECV_PIPE, instant, getpid(), buffer);
                     close(pipefd[READ]);
                     fileSize += atoi(buffer); // very important that it is +=
                     
@@ -372,6 +378,7 @@ int main(int argc, char* argv[]){
         waitpid(pid, &status, 0);
 
         read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+        logEVENT(RECV_PIPE, instant, getpid(), buffer);
         close(pipefd[READ]);
         int dirSize = atoi(buffer);
 
