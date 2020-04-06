@@ -156,7 +156,9 @@ void signalHandler(int signo) {
     if (signo == SIGINT && childrenPGID != 0) {
         logEVENT(RECV_SIGNAL, instant, getpid(), "SIGINT");
         killpg(childrenPGID, SIGSTOP);
-        logEVENT(SEND_SIGNAL, instant, getpid(), "SIGSTOP");
+        char str[MAX_STRING_SIZE];
+        sprintf(str, "SIGSTOP %d", childrenPGID);
+        logEVENT(SEND_SIGNAL, instant, getpid(), str);
         while(true) {
             char* opt = malloc(MAX_STRING_SIZE);
             printf("\nAre you sure you want to terminate execution? (Y/N) ");
@@ -167,7 +169,8 @@ void signalHandler(int signo) {
             if (optc == 'Y' || optc == 'y') {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
-                logEVENT(SEND_SIGNAL, instant, getpid(), "SIGTERM");
+                sprintf(str, "SIGTERM %d", childrenPGID);
+                logEVENT(SEND_SIGNAL, instant, getpid(), str);
                 logEVENT(EXIT, instant, getpid(), "7");
                 exit(7);
                 break;
@@ -175,7 +178,8 @@ void signalHandler(int signo) {
                 // Send SIGCONT to children
                 printf("Resuming execution.\n");
                 killpg(childrenPGID, SIGCONT);
-                logEVENT(SEND_SIGNAL, instant, getpid(), "SIGCONT");
+                sprintf(str, "SIGCONT %d", childrenPGID);
+                logEVENT(SEND_SIGNAL, instant, getpid(), str);
                 break;
             }
         }
