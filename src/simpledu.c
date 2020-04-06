@@ -83,6 +83,7 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 block_size = atoi(optarg);
                 if (block_size < 0){
                     printf("Block-size can't be negative.\n");
+                    logEVENT(EXIT, instant, getpid(), "2");
                     exit(2);
                 }
                 //printf("Block size: %s\n", optarg);
@@ -103,12 +104,14 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 max_depth = atoi(optarg);
                 if (max_depth < 0){
                     printf("Max depth can't be negative.\n");
+                    logEVENT(EXIT, instant, getpid(), "2");
                     exit(2);
                 }
                 //printf("Max depth = %d\n", max_depth);
                 break;
             case '?':
                 printUsage();
+                logEVENT(EXIT, instant, getpid(), "1");
                 exit(1);
                 break;
             default:
@@ -165,6 +168,7 @@ void signalHandler(int signo) {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
                 logEVENT(SEND_SIGNAL, instant, getpid(), "SIGTERM");
+                logEVENT(EXIT, instant, getpid(), "7");
                 exit(7);
                 break;
             } else if (optc == 'N' || optc == 'n') {
@@ -187,6 +191,7 @@ void installSignalHandler() {
 
     if (sigaction(SIGINT, &action, NULL) == -1) {
         printf("Unable to install signal handler.\n");
+        logEVENT(EXIT, instant, getpid(), "4");
         exit(4);
     }
 }
@@ -233,6 +238,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     if (masterProcess) {
         if (lstat(path, &stat_buf) != 0) {
             perror(path);
+            logEVENT(EXIT, instant, getpid(), "3");
             exit(3);
         }
         currentDirSize += calculateFileSize(&stat_buf);
@@ -245,6 +251,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
         if ((dirp = opendir(path)) == NULL)
         {
             perror(path);
+            logEVENT(EXIT, instant, getpid(), "2");
             exit(2);
         }
 
@@ -304,6 +311,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 int pipefd[2];
                 if (pipe(pipefd) == -1) {
                     printf("ERROR PIPEING\n");
+                    logEVENT(EXIT, instant, getpid(), "6");
                     exit(6);
                 }
 
@@ -327,9 +335,11 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     close(pipefd[READ]);
                     checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
                     close(pipefd[WRITE]);
+                    logEVENT(EXIT, instant, getpid(), "0");
                     exit(0);
                 } else {
                     printf("Error forking\n");
+                    logEVENT(EXIT, instant, getpid(), "5");
                     exit(5);
                 }
             } else {
@@ -368,6 +378,7 @@ int main(int argc, char* argv[]){
 
     if (pipe(pipefd) == -1) {
         printf("ERROR PIPEING\n");
+        logEVENT(EXIT, instant, getpid(), "6");
         exit(6);
     }
 
@@ -388,13 +399,16 @@ int main(int argc, char* argv[]){
         setpgid(0, 0);
         checkDirectory(true, path, max_depth, pipefd[WRITE]);
         close(pipefd[WRITE]);
+        logEVENT(EXIT, instant, getpid(), "0");
         exit(0);
     } else {
         printf("Error forking\n");
+        logEVENT(EXIT, instant, getpid(), "5");
         exit(5);
     }
 
     //free(path); Está a dar-me Segmentation Fault aqui
+    logEVENT(EXIT, instant, getpid(), "0");
     closeLog();
     exit(0);
 }
