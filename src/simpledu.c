@@ -158,7 +158,7 @@ void signalHandler(int signo) {
             scanf("%s", opt);
             char optc = opt[0];
             free(opt);
-            
+
             if (optc == 'Y' || optc == 'y') {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
@@ -347,6 +347,8 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
     setLogFilename(); // i suggest that we create the logger functions in a separate file
+    clearLogFile();
+    //logEVENT(CREATE, 9999.88, 17263, "My arguments"); // just to test
     installSignalHandler();
     /*
     Doubt: Do we need to log all signals or only SIGINT's?
