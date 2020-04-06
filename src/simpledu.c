@@ -44,27 +44,6 @@ char * logFilename;
 
 int childrenPGID = 0;
 
-
-void prepare_command(char **cmd, char* path){
-    char * tmp = malloc(MAX_STRING_SIZE);
-    int i = 0;
-
-    cmd[i++] = "simpledu";
-    if (all) cmd[i++] = "-a";
-    if (bytes) cmd[i++] = "-b";
-    sprintf(tmp, "-B=%d", block_size);
-    cmd[i++] = tmp;
-    if (count_links) cmd[i++] = "-l";
-    if (dereference) cmd[i++] = "-L";
-    if (separate_dirs) cmd[i++] = "-S";
-    if (max_depth > 0) sprintf(tmp, "--max-depth=%d", max_depth - 1);
-    else sprintf(tmp, "--max-depth=%d", max_depth);
-
-    cmd[i++] = tmp;
-    cmd[i++] = path;
-    cmd[i] = NULL;
-}
-
 void printUsage() {
     printf("\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n");
 }
@@ -171,18 +150,21 @@ void setLogFilename() {
 
 void signalHandler(int signo) {
     if (signo == SIGINT && childrenPGID != 0) {
-        char* opt = malloc(MAX_STRING_SIZE);
 
         killpg(childrenPGID, SIGSTOP);
         while(true) {
+            char* opt = malloc(MAX_STRING_SIZE);
             printf("\nAre you sure you want to terminate execution? (Y/N) ");
             scanf("%s", opt);
-            if (opt[0] == 'Y' || opt[0] == 'y') {
+            char optc = opt[0];
+            free(opt);
+            
+            if (optc == 'Y' || optc == 'y') {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
                 exit(7);
                 break;
-            } else if (opt[0] == 'N' || opt[0] == 'n') {
+            } else if (optc == 'N' || optc == 'n') {
                 // Send SIGCONT to children
                 printf("Resuming execution.\n");
                 killpg(childrenPGID, SIGCONT);
@@ -355,6 +337,9 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     sprintf(b, "%d", currentDirSize);
     write(outputFD, b, sizeof(b));
 
+    free(b);
+    free(newpath);
+
     closedir(dirp);
 }
 
@@ -397,5 +382,6 @@ int main(int argc, char* argv[]){
         exit(5);
     }
 
+    free(path);
     exit(0);
 }
