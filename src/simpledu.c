@@ -150,8 +150,9 @@ void setLogFilename() {
 
 void signalHandler(int signo) {
     if (signo == SIGINT && childrenPGID != 0) {
-
+        logEVENT(RECV_SIGNAL, 10, getpid(), "SIGINT");
         killpg(childrenPGID, SIGSTOP);
+        logEVENT(SEND_SIGNAL, 10, getpid(), "SIGSTOP");
         while(true) {
             char* opt = malloc(MAX_STRING_SIZE);
             printf("\nAre you sure you want to terminate execution? (Y/N) ");
@@ -162,12 +163,14 @@ void signalHandler(int signo) {
             if (optc == 'Y' || optc == 'y') {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
+                logEVENT(SEND_SIGNAL, 10, getpid(), "SIGTERM");
                 exit(7);
                 break;
             } else if (optc == 'N' || optc == 'n') {
                 // Send SIGCONT to children
                 printf("Resuming execution.\n");
                 killpg(childrenPGID, SIGCONT);
+                logEVENT(SEND_SIGNAL, 10, getpid(), "SIGCONT");
                 break;
             }
         }
@@ -384,6 +387,7 @@ int main(int argc, char* argv[]){
         exit(5);
     }
 
-    free(path);
+    //free(path); Está a dar-me Segmentation Fault aqui
+    closeLog();
     exit(0);
 }

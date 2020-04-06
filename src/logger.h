@@ -18,6 +18,10 @@ void clearLogFile();
 */
 void logMessage(char * message);
 
+/**
+ * Closes log file descriptor
+ */
+void closeLog();
 
 /*
 instant – pid – action – info
