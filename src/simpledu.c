@@ -390,7 +390,6 @@ int main(int argc, char* argv[]){
         waitpid(pid, &status, 0);
 
         readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
-        logEVENT(RECV_PIPE, getpid(), buffer);
         close(pipefd[READ]);
         int dirSize = atoi(buffer);
 
