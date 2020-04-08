@@ -81,8 +81,8 @@ char * getCommandLineArgs(int argc, char * argv[]) {
             case 'B':
                 block_size = atoi(optarg);
                 if (block_size < 0){
-                    printf("Block-size can't be negative.\n");
-                    terminateProcess(2);
+                    perror("Block-size can't be negative");
+                    terminateProcess(EXIT_FAILURE);
                 }
                 //printf("Block size: %s\n", optarg);
                 break;
@@ -101,14 +101,14 @@ char * getCommandLineArgs(int argc, char * argv[]) {
             case MAX_DEPTH:
                 max_depth = atoi(optarg);
                 if (max_depth < 0){
-                    printf("Max depth can't be negative.\n");
-                    terminateProcess(2);
+                    perror("Max depth can't be negative");
+                    terminateProcess(EXIT_FAILURE);
                 }
                 //printf("Max depth = %d\n", max_depth);
                 break;
             case '?':
                 printUsage();
-                terminateProcess(1);
+                terminateProcess(EXIT_SUCCESS);
                 break;
             default:
                 break;
@@ -167,7 +167,7 @@ void signalHandler(int signo) {
                 killpg(childrenPGID, SIGTERM);
                 sprintf(str, "SIGTERM %d", childrenPGID);
                 logEVENT(SEND_SIGNAL, getpid(), str);
-                terminateProcess(7);
+                terminateProcess(130);
                 break;
             } else if (optc == 'N' || optc == 'n') {
                 // Send SIGCONT to children
@@ -189,8 +189,8 @@ void installSignalHandler() {
     action.sa_flags = 0;
 
     if (sigaction(SIGINT, &action, NULL) == -1) {
-        printf("Unable to install signal handler.\n");
-        terminateProcess(4);
+        perror("Unable to install signal handler");
+        terminateProcess(EXIT_FAILURE);
     }
 }
 
@@ -244,7 +244,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     if (masterProcess) {
         if (lstat(path, &stat_buf) != 0) {
             perror(path);
-            terminateProcess(3);
+            terminateProcess(EXIT_FAILURE);
         }
         currentDirSize += calculateFileSize(&stat_buf);
         if (S_ISLNK(stat_buf.st_mode) && !dereference) {
@@ -256,7 +256,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
         if ((dirp = opendir(path)) == NULL)
         {
             perror(path);
-            terminateProcess(2);
+            terminateProcess(EXIT_FAILURE);
         }
 
         /* struct dirent {
@@ -298,7 +298,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             returns information about the file in the struct stat format */
             if (lstat(newpath, &stat_buf) != 0) {
                 perror(newpath);
-                terminateProcess(3);
+                terminateProcess(EXIT_FAILURE);
             }
             
             fileSize = calculateFileSize(&stat_buf);
@@ -314,8 +314,8 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             if (S_ISDIR(stat_buf.st_mode) || (S_ISLNK(stat_buf.st_mode) && dereference)) {
                 int pipefd[2];
                 if (pipe(pipefd) == -1) {
-                    printf("ERROR PIPEING\n");
-                    terminateProcess(6);
+                    perror("Error making pipe");
+                    terminateProcess(EXIT_FAILURE);
                 }
 
                 if ((pid = fork()) > 0) {
@@ -338,10 +338,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     logEVENT(CREATE, getpid(), "");
                     checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
                     close(pipefd[WRITE]);
-                    terminateProcess(0);
+                    terminateProcess(EXIT_SUCCESS);
                 } else {
-                    printf("Error forking\n");
-                    terminateProcess(5);
+                    perror("Error forking");
+                    terminateProcess(EXIT_FAILURE);
                 }
             } else {
                 if (currentDepth > 0 && all) {
@@ -379,8 +379,8 @@ int main(int argc, char* argv[]){
     char buffer[MAX_STRING_SIZE];
 
     if (pipe(pipefd) == -1) {
-        printf("ERROR PIPEING\n");
-        terminateProcess(6);
+        perror("Error making pipe");
+        terminateProcess(EXIT_FAILURE);
     }
 
     if ((pid = fork()) > 0) {
@@ -400,11 +400,11 @@ int main(int argc, char* argv[]){
         setpgid(0, 0);
         checkDirectory(true, path, max_depth, pipefd[WRITE]);
         close(pipefd[WRITE]);
-        terminateProcess(0);
+        terminateProcess(EXIT_SUCCESS);
     } else {
-        printf("Error forking\n");
-        terminateProcess(5);
+        perror("Error forking");
+        terminateProcess(EXIT_FAILURE);
     }
 
-    terminateProcess(0);
+    terminateProcess(EXIT_SUCCESS);
 }

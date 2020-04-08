@@ -22,16 +22,16 @@ void openLogFile() {
     close(open(logFilename, O_WRONLY | O_TRUNC | O_CREAT, 0644));
     fd = open(logFilename, O_WRONLY | O_APPEND);
     if (fd == -1) {
-        printf("Error opening log file.\n");
-        terminateProcess(1);
+        perror("Error opening log file");
+        terminateProcess(EXIT_FAILURE);
     }
 }
 
 void logMessage(char * message) {
     sprintf(str, "%s", message);
     if (write(fd, str, strlen(str)) < 0) {
-        printf("Error writing to log file.\n");
-        terminateProcess(1);
+        perror("Error writing to log file");
+        terminateProcess(EXIT_FAILURE);
     }
 }
 
