@@ -356,10 +356,11 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 }
 
 // TODO check return codes
-int main(int argc, char* argv[]){
-    char *path = getCommandLineArgs(argc, argv); 
-    setLogFilename(); // i suggest that we create the logger functions in a separate file
+int main(int argc, char* argv[]){ 
+    setLogFilename();
     openLogFile();
+    
+    char *path = getCommandLineArgs(argc, argv);
     installSignalHandler();
     /*
     Doubt: Do we need to log all signals or only SIGINT's?

@@ -18,13 +18,13 @@ struct timespec start;
 char * eventStrings[7] = {"CREATE", "EXIT", "RECV_SIGNAL", "SEND_SIGNAL", "RECV_PIPE", "SEND_PIPE", "ENTRY"};
 
 void openLogFile() {
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     close(open(logFilename, O_WRONLY | O_TRUNC | O_CREAT, 0644));
     fd = open(logFilename, O_WRONLY | O_APPEND);
     if (fd == -1) {
         printf("Error opening log file.\n");
         terminateProcess(1);
     }
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 }
 
 void logMessage(char * message) {
@@ -45,7 +45,7 @@ void logEVENT(enum EVENT event, int pid, char * info) {
     struct timespec end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
 
-    double instant = ((end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000)/1000;
+    double instant = (end.tv_sec - start.tv_sec) * 1000. + ((end.tv_nsec - start.tv_nsec) / 1000000.);
 
     sprintf(message, "%.2lf - %-8d - %s - %s\n", instant, pid, eventStrings[event], info);
     logMessage(message);
