@@ -196,10 +196,6 @@ void installSignalHandler() {
 
 void printInfoLine(int size, char * path) {
     printf("%-7d %s\n", size, path);
-    char* str = malloc(MAX_STRING_SIZE);
-    sprintf(str, "%-7d %s", size, path);
-    logEVENT(SEND_PIPE, getpid(), str);
-    free(str);
 }
 
 int calculateFileSize(struct stat *stat_buf) {
@@ -218,6 +214,18 @@ int calculateFileSize(struct stat *stat_buf) {
         return ceil(fileSize/1024);
     else 
         return ceil(fileSize/block_size);
+}
+
+
+int writePipe(int fd, char * buffer, int bufferSize) {
+    logEVENT(SEND_PIPE, getpid(), buffer);
+    return write(fd, buffer, bufferSize);
+}
+
+int readPipe(int fd, char * buffer, int bufferSize) {
+    int ret = read(fd, buffer, bufferSize);
+    logEVENT(RECV_PIPE, getpid(), buffer);
+    return ret;
 }
 
 
@@ -289,7 +297,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             };
             returns information about the file in the struct stat format */
             if (lstat(newpath, &stat_buf) != 0) {
-                perror(path);
+                perror(newpath);
                 terminateProcess(3);
             }
             
@@ -315,8 +323,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     int status;
                     waitpid(pid, &status, 0);
 
-                    read(pipefd[READ], &buffer, MAX_STRING_SIZE);
-                    logEVENT(RECV_PIPE, getpid(), buffer);
+                    readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
                     close(pipefd[READ]);
                     fileSize += atoi(buffer); // very important that it is +=
                     
@@ -328,6 +335,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 
                 } else if (pid == 0) {
                     close(pipefd[READ]);
+                    logEVENT(CREATE, getpid(), "");
                     checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
                     close(pipefd[WRITE]);
                     terminateProcess(0);
@@ -347,10 +355,8 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 
     char *b = malloc(MAX_STRING_SIZE);
     sprintf(b, "%d", currentDirSize);
-    write(outputFD, b, sizeof(b));
-
+    writePipe(outputFD, b, sizeof(b));
     free(b);
-    free(newpath);
 
     closedir(dirp);
 }
@@ -359,12 +365,15 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 int main(int argc, char* argv[]){ 
     setLogFilename();
     openLogFile();
-    
+
+    char * argvs = satos(argv, argc);
+    logEVENT(CREATE, getpid(), argvs);
+    free(argvs);
+
     char *path = getCommandLineArgs(argc, argv);
     installSignalHandler();
-    /*
-    Doubt: Do we need to log all signals or only SIGINT's?
-    */
+    
+
     int pipefd[2];
     pid_t pid;
     char buffer[MAX_STRING_SIZE];
@@ -380,7 +389,7 @@ int main(int argc, char* argv[]){
         int status;
         waitpid(pid, &status, 0);
 
-        read(pipefd[READ], &buffer, MAX_STRING_SIZE);
+        readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
         logEVENT(RECV_PIPE, getpid(), buffer);
         close(pipefd[READ]);
         int dirSize = atoi(buffer);
@@ -388,6 +397,7 @@ int main(int argc, char* argv[]){
         printInfoLine(dirSize, path);
     } else if (pid == 0) {
         close(pipefd[READ]);
+        logEVENT(CREATE, getpid(), "");
         setpgid(0, 0);
         checkDirectory(true, path, max_depth, pipefd[WRITE]);
         close(pipefd[WRITE]);
@@ -397,6 +407,5 @@ int main(int argc, char* argv[]){
         terminateProcess(5);
     }
 
-    //free(path); Está a dar-me Segmentation Fault aqui
     terminateProcess(0);
 }

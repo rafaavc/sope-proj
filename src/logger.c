@@ -58,3 +58,12 @@ void terminateProcess(int status) {
     closeLog();
     exit(status);
 }
+
+char * satos(char ** sa, int c) {
+    char * res = malloc(MAX_STRING_SIZE);
+    sprintf(res, "%s", sa[0]);
+    for (int i = 1; i < c; i++) {
+        sprintf(res, "%s, %s", res, sa[i]);
+    }
+    return res;
+}

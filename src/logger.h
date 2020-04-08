@@ -53,3 +53,8 @@ void logEVENT(enum EVENT event, int pid, char * info);
  * Logs event before exiting
 */ 
 void terminateProcess(int status);
+
+/**
+ *  String array to string 
+*/
+char * satos(char ** sa, int count);
