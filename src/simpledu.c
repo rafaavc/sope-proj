@@ -43,7 +43,6 @@ bool all = false, bytes = false, count_links = true, dereference = false, separa
 char * logFilename;
 
 int childrenPGID = 0;
-double instant = 0;
 
 void printUsage() {
     printf("\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n");
@@ -83,8 +82,7 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 block_size = atoi(optarg);
                 if (block_size < 0){
                     printf("Block-size can't be negative.\n");
-                    logEVENT(EXIT, instant, getpid(), "2");
-                    exit(2);
+                    terminateProcess(2);
                 }
                 //printf("Block size: %s\n", optarg);
                 break;
@@ -104,15 +102,13 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 max_depth = atoi(optarg);
                 if (max_depth < 0){
                     printf("Max depth can't be negative.\n");
-                    logEVENT(EXIT, instant, getpid(), "2");
-                    exit(2);
+                    terminateProcess(2);
                 }
                 //printf("Max depth = %d\n", max_depth);
                 break;
             case '?':
                 printUsage();
-                logEVENT(EXIT, instant, getpid(), "1");
-                exit(1);
+                terminateProcess(1);
                 break;
             default:
                 break;
@@ -154,11 +150,11 @@ void setLogFilename() {
 
 void signalHandler(int signo) {
     if (signo == SIGINT && childrenPGID != 0) {
-        logEVENT(RECV_SIGNAL, instant, getpid(), "SIGINT");
+        logEVENT(RECV_SIGNAL, getpid(), "SIGINT");
         killpg(childrenPGID, SIGSTOP);
         char str[MAX_STRING_SIZE];
         sprintf(str, "SIGSTOP %d", childrenPGID);
-        logEVENT(SEND_SIGNAL, instant, getpid(), str);
+        logEVENT(SEND_SIGNAL, getpid(), str);
         while(true) {
             char* opt = malloc(MAX_STRING_SIZE);
             printf("\nAre you sure you want to terminate execution? (Y/N) ");
@@ -170,16 +166,15 @@ void signalHandler(int signo) {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
                 sprintf(str, "SIGTERM %d", childrenPGID);
-                logEVENT(SEND_SIGNAL, instant, getpid(), str);
-                logEVENT(EXIT, instant, getpid(), "7");
-                exit(7);
+                logEVENT(SEND_SIGNAL, getpid(), str);
+                terminateProcess(7);
                 break;
             } else if (optc == 'N' || optc == 'n') {
                 // Send SIGCONT to children
                 printf("Resuming execution.\n");
                 killpg(childrenPGID, SIGCONT);
                 sprintf(str, "SIGCONT %d", childrenPGID);
-                logEVENT(SEND_SIGNAL, instant, getpid(), str);
+                logEVENT(SEND_SIGNAL, getpid(), str);
                 break;
             }
         }
@@ -195,8 +190,7 @@ void installSignalHandler() {
 
     if (sigaction(SIGINT, &action, NULL) == -1) {
         printf("Unable to install signal handler.\n");
-        logEVENT(EXIT, instant, getpid(), "4");
-        exit(4);
+        terminateProcess(4);
     }
 }
 
@@ -204,7 +198,7 @@ void printInfoLine(int size, char * path) {
     printf("%-7d %s\n", size, path);
     char* str = malloc(MAX_STRING_SIZE);
     sprintf(str, "%-7d %s", size, path);
-    logEVENT(SEND_PIPE, instant, getpid(), str);
+    logEVENT(SEND_PIPE, getpid(), str);
     free(str);
 }
 
@@ -242,8 +236,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     if (masterProcess) {
         if (lstat(path, &stat_buf) != 0) {
             perror(path);
-            logEVENT(EXIT, instant, getpid(), "3");
-            exit(3);
+            terminateProcess(3);
         }
         currentDirSize += calculateFileSize(&stat_buf);
         if (S_ISLNK(stat_buf.st_mode) && !dereference) {
@@ -255,8 +248,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
         if ((dirp = opendir(path)) == NULL)
         {
             perror(path);
-            logEVENT(EXIT, instant, getpid(), "2");
-            exit(2);
+            terminateProcess(2);
         }
 
         /* struct dirent {
@@ -298,7 +290,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             returns information about the file in the struct stat format */
             if (lstat(newpath, &stat_buf) != 0) {
                 perror(path);
-                exit(3);
+                terminateProcess(3);
             }
             
             fileSize = calculateFileSize(&stat_buf);
@@ -315,8 +307,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 int pipefd[2];
                 if (pipe(pipefd) == -1) {
                     printf("ERROR PIPEING\n");
-                    logEVENT(EXIT, instant, getpid(), "6");
-                    exit(6);
+                    terminateProcess(6);
                 }
 
                 if ((pid = fork()) > 0) {
@@ -325,7 +316,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     waitpid(pid, &status, 0);
 
                     read(pipefd[READ], &buffer, MAX_STRING_SIZE);
-                    logEVENT(RECV_PIPE, instant, getpid(), buffer);
+                    logEVENT(RECV_PIPE, getpid(), buffer);
                     close(pipefd[READ]);
                     fileSize += atoi(buffer); // very important that it is +=
                     
@@ -339,12 +330,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     close(pipefd[READ]);
                     checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
                     close(pipefd[WRITE]);
-                    logEVENT(EXIT, instant, getpid(), "0");
-                    exit(0);
+                    terminateProcess(0);
                 } else {
                     printf("Error forking\n");
-                    logEVENT(EXIT, instant, getpid(), "5");
-                    exit(5);
+                    terminateProcess(5);
                 }
             } else {
                 if (currentDepth > 0 && all) {
@@ -370,8 +359,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 int main(int argc, char* argv[]){
     char *path = getCommandLineArgs(argc, argv); 
     setLogFilename(); // i suggest that we create the logger functions in a separate file
-    clearLogFile();
-    //logEVENT(CREATE, 9999.88, 17263, "My arguments"); // just to test
+    openLogFile();
     installSignalHandler();
     /*
     Doubt: Do we need to log all signals or only SIGINT's?
@@ -382,8 +370,7 @@ int main(int argc, char* argv[]){
 
     if (pipe(pipefd) == -1) {
         printf("ERROR PIPEING\n");
-        logEVENT(EXIT, instant, getpid(), "6");
-        exit(6);
+        terminateProcess(6);
     }
 
     if ((pid = fork()) > 0) {
@@ -393,7 +380,7 @@ int main(int argc, char* argv[]){
         waitpid(pid, &status, 0);
 
         read(pipefd[READ], &buffer, MAX_STRING_SIZE);
-        logEVENT(RECV_PIPE, instant, getpid(), buffer);
+        logEVENT(RECV_PIPE, getpid(), buffer);
         close(pipefd[READ]);
         int dirSize = atoi(buffer);
 
@@ -403,16 +390,12 @@ int main(int argc, char* argv[]){
         setpgid(0, 0);
         checkDirectory(true, path, max_depth, pipefd[WRITE]);
         close(pipefd[WRITE]);
-        logEVENT(EXIT, instant, getpid(), "0");
-        exit(0);
+        terminateProcess(0);
     } else {
         printf("Error forking\n");
-        logEVENT(EXIT, instant, getpid(), "5");
-        exit(5);
+        terminateProcess(5);
     }
 
     //free(path); Está a dar-me Segmentation Fault aqui
-    logEVENT(EXIT, instant, getpid(), "0");
-    closeLog();
-    exit(0);
+    terminateProcess(0);
 }

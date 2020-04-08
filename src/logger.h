@@ -9,9 +9,9 @@ enum EVENT {
 };
 
 /**
- * Clears the contents of the log file
+ * Clears the contents and opens the log file
 */
-void clearLogFile();
+void openLogFile();
 
 /**
  * Logs a message to the log file
@@ -47,4 +47,9 @@ com 2 casas decimais, tendo como referência o instante em que o programa começ
 /**
  * Logs any given event
 */
-void logEVENT(enum EVENT event, double instant, int pid, char * info);
+void logEVENT(enum EVENT event, int pid, char * info);
+
+/**
+ * Logs event before exiting
+*/ 
+void terminateProcess(int status);
