@@ -1,0 +1,11 @@
+#define VBE_INTERFACE 0x10
+#define LINEAR_FRAMEBUFFER BIT(14)
+
+#define BIOS_AH 0x4F
+#define SET_VBE_MODE 0x02
+
+#define SIZE_MB 1024*1024
+
+#define INDEX_COLOR_MODE 0x105
+
+#define BLACK_RGB 0

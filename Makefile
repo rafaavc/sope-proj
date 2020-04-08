@@ -10,10 +10,10 @@ DEPS = $(patsubst %,$(SRCDIR)/%,$(_DEPS))
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	mkdir -p $(OBJDIR)
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< -Wall -lm
 
 $(PROGNAME): $(OBJ)
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -Wall -lm
 
 .PHONY: clean
 

@@ -217,12 +217,12 @@ int calculateFileSize(struct stat *stat_buf) {
 }
 
 
-int writePipe(int fd, char * buffer, int bufferSize) {
+int writePipe(int fd, void * buffer, int bufferSize) {
     logEVENT(SEND_PIPE, getpid(), buffer);
     return write(fd, buffer, bufferSize);
 }
 
-int readPipe(int fd, char * buffer, int bufferSize) {
+int readPipe(int fd, void * buffer, int bufferSize) {
     int ret = read(fd, buffer, bufferSize);
     logEVENT(RECV_PIPE, getpid(), buffer);
     return ret;
