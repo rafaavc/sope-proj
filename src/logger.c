@@ -47,7 +47,7 @@ void logEVENT(enum EVENT event, int pid, char * info) {
 
     double instant = (end.tv_sec - start.tv_sec) * 1000. + ((end.tv_nsec - start.tv_nsec) / 1000000.);
 
-    sprintf(message, "%.2lf - %-8d - %s - %s\n", instant, pid, eventStrings[event], info);
+    sprintf(message, "%.2lf - %-8d - %-11s - %s\n", instant, pid, eventStrings[event], info);
     logMessage(message);
 }
 

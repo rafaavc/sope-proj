@@ -233,7 +233,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     DIR *dirp;
     struct dirent *direntp;
     struct stat stat_buf;
-    char *newpath = malloc(MAX_STRING_SIZE);
+    char *newpath = malloc(MAX_STRING_SIZE), * info = malloc(MAX_STRING_SIZE);
     char buffer[MAX_STRING_SIZE];
     int currentDirSize = 0;
     int fileSize;
@@ -335,7 +335,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 
                 } else if (pid == 0) {
                     close(pipefd[READ]);
-                    logEVENT(CREATE, getpid(), "");
+                    
+                    sprintf(info, "max-depth: %-10d, %s", currentDepth-1, newpath);
+                    logEVENT(CREATE, getpid(), info);
+
                     checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
                     close(pipefd[WRITE]);
                     terminateProcess(EXIT_SUCCESS);
@@ -349,6 +352,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 }
                 currentDirSize += fileSize;
             }
+
+            sprintf(info, "%d \t\t %s", fileSize, newpath);
+            logEVENT(ENTRY, getpid(), info);
+
         }
     }
 
@@ -357,6 +364,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     sprintf(b, "%d", currentDirSize);
     writePipe(outputFD, b, sizeof(b));
     free(b);
+    free(info);
 
     closedir(dirp);
 }
@@ -377,6 +385,7 @@ int main(int argc, char* argv[]){
     int pipefd[2];
     pid_t pid;
     char buffer[MAX_STRING_SIZE];
+    char * info = malloc(MAX_STRING_SIZE);
 
     if (pipe(pipefd) == -1) {
         perror("Error making pipe");
@@ -392,11 +401,16 @@ int main(int argc, char* argv[]){
         readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
         close(pipefd[READ]);
         int dirSize = atoi(buffer);
-
+        
         printInfoLine(dirSize, path);
+        sprintf(info, "%d \t\t %s", dirSize, path);
+        logEVENT(ENTRY, getpid(), info);
     } else if (pid == 0) {
         close(pipefd[READ]);
-        logEVENT(CREATE, getpid(), "");
+
+        sprintf(info, "max-depth: %-10d, %s", max_depth, path);
+        logEVENT(CREATE, getpid(), info);
+
         setpgid(0, 0);
         checkDirectory(true, path, max_depth, pipefd[WRITE]);
         close(pipefd[WRITE]);
@@ -406,5 +420,6 @@ int main(int argc, char* argv[]){
         terminateProcess(EXIT_FAILURE);
     }
 
+    free(info);
     terminateProcess(EXIT_SUCCESS);
 }
