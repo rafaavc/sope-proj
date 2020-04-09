@@ -12,11 +12,10 @@
 #include "logger.h"
 
 
-#define MAX_STRING_SIZE 512
+#define MAX_STRING_SIZE 1024
 #define MAX_DEPTH 'm'
 #define WRITE 1
 #define READ 0
-
 
 /*
 From the specifications:
@@ -67,16 +66,11 @@ char * getCommandLineArgs(int argc, char * argv[]) {
     char c;
     while((c = getopt_long(argc, argv, "abB:lLS", long_options, NULL)) != -1){
         switch(c){
-            case 0:     //long option
-                printf("ZERO\n");
-                break;
             case 'a':
                 all = true;
-                ///printf("all\n");
                 break;
             case 'b':
                 bytes = true;
-                //printf("bytes\n");
                 break;
             case 'B':
                 block_size = atoi(optarg);
@@ -84,19 +78,14 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                     perror("Block-size can't be negative");
                     terminateProcess(EXIT_FAILURE);
                 }
-                //printf("Block size: %s\n", optarg);
                 break;
             case 'l':
-                // count_links is assumed to be always activated
-                // printf("count_links\n");
                 break;
             case 'L':
                 dereference = true;
-                //printf("dereference\n");
                 break;
             case 'S':
                 separate_dirs = true;
-                //printf("separate_dirs\n");
                 break;
             case MAX_DEPTH:
                 max_depth = atoi(optarg);
@@ -104,11 +93,10 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                     perror("Max depth can't be negative");
                     terminateProcess(EXIT_FAILURE);
                 }
-                //printf("Max depth = %d\n", max_depth);
                 break;
             case '?':
                 printUsage();
-                terminateProcess(EXIT_SUCCESS);
+                terminateProcess(EXIT_FAILURE);
                 break;
             default:
                 break;
