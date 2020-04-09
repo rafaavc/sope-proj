@@ -71,6 +71,7 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 break;
             case 'b':
                 bytes = true;
+                block_size = -1;
                 break;
             case 'B':
                 block_size = atoi(optarg);
