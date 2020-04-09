@@ -377,10 +377,10 @@ int main(int argc, char* argv[]){
 
         readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
         close(pipefd[READ]);
-        int dirSize = atoi(buffer);
+        double dirSize = atof(buffer);
         
         printInfoLine(dirSize, path);
-        sprintf(info, "%d \t\t %s", dirSize, path);
+        sprintf(info, "%f \t\t %s", dirSize, path);
         logEVENT(ENTRY, getpid(), info);
     } else if (pid == 0) {
         close(pipefd[READ]);
