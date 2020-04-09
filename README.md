@@ -1,5 +1,5 @@
-# disk-space-check
-Project for the Operating Systems class @ FEUP
+# Simpledu (t2g07)
+Projeto para a Unidade Curricular SOPE @ FEUP 2019-2020
 
 
 ### Funcionalidades
@@ -7,7 +7,7 @@ Project for the Operating Systems class @ FEUP
 - [x] -a/--all
 - [X] -b/--bytes
 - [X] -B/--block-size
-- [x] -L/--dereference   (loop de symbolic links!)
+- [x] -L/--dereference
 - [x] -S/--separate-dirs
 - [x] --max-depth
 
