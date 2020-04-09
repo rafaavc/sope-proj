@@ -195,10 +195,16 @@ void installSignalHandler() {
 
 void printInfoLine(double size, char * path) {
     int sizei = ceil(size);
-    if (sizei > 9999999)
-        printf("%-15d %s\n", sizei, path);
-    else 
-        printf("%-7d %s\n", sizei, path);
+    if (sizei > 9999999) {
+        char str[MAX_STRING_SIZE];
+        sprintf(str, "%-15d %s\n", sizei, path);
+        write(STDOUT_FILENO, str, strlen(str));
+    }
+    else {
+        char str[MAX_STRING_SIZE];
+        sprintf(str, "%-7d %s\n", sizei, path);
+        write(STDOUT_FILENO, str, strlen(str));
+    }
 }
 
 double calculateFileSize(struct stat *stat_buf) {
