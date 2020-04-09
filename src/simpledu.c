@@ -229,7 +229,7 @@ double calculateFileSize(struct stat *stat_buf) {
 
 int writePipe(int fd, double * buffer, int bufferSize) {
     char * info = malloc(MAX_STRING_SIZE);
-    sprintf(info, "%d", (int) ceil(*buffer));
+    sprintf(info, "%lf", *buffer);
     logEVENT(SEND_PIPE, getpid(), info);
     free(info);
     return write(fd, buffer, bufferSize);
@@ -238,7 +238,7 @@ int writePipe(int fd, double * buffer, int bufferSize) {
 int readPipe(int fd, double * buffer, int bufferSize) {
     int ret = read(fd, buffer, bufferSize);
     char * info = malloc(MAX_STRING_SIZE);
-    sprintf(info, "%d", (int) ceil(*buffer));
+    sprintf(info, "%lf", *buffer);
     logEVENT(RECV_PIPE, getpid(), info);
     free(info);
     return ret;
