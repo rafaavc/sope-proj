@@ -80,6 +80,9 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 break;
             case 'B':
                 block_size = atoi(optarg);
+                if (block_size > 4){
+                    block_size -= block_size % 4;
+                }
                 if (block_size < 0){
                     perror("Block-size can't be negative");
                     terminateProcess(EXIT_FAILURE);
@@ -165,7 +168,6 @@ void signalHandler(int signo) {
             if (optc == 'Y' || optc == 'y') {
                 printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
-                sprintf(str, "SIGTERM %d", childrenPGID);
                 logEVENT(SEND_SIGNAL, getpid(), str);
                 terminateProcess(130);
                 break;
@@ -195,7 +197,10 @@ void installSignalHandler() {
 }
 
 void printInfoLine(int size, char * path) {
-    printf("%-7d %s\n", size, path);
+    if (size > 9999999)
+        printf("%-15d %s\n", size, path);
+    else 
+        printf("%-7d %s\n", size, path);
 }
 
 int calculateFileSize(struct stat *stat_buf) {
@@ -212,8 +217,9 @@ int calculateFileSize(struct stat *stat_buf) {
 
     if (block_size == -1)
         return ceil(fileSize/1024);
-    else 
-        return ceil(fileSize/block_size);
+    else {
+        return ceil(fileSize*1.0/block_size);
+    }
 }
 
 
