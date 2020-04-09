@@ -80,9 +80,6 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 break;
             case 'B':
                 block_size = atoi(optarg);
-                if (block_size > 4){
-                    block_size -= block_size % 4;
-                }
                 if (block_size < 0){
                     perror("Block-size can't be negative");
                     terminateProcess(EXIT_FAILURE);
@@ -196,29 +193,30 @@ void installSignalHandler() {
     }
 }
 
-void printInfoLine(int size, char * path) {
-    if (size > 9999999)
-        printf("%-15d %s\n", size, path);
+void printInfoLine(double size, char * path) {
+    int sizei = ceil(size);
+    if (sizei > 9999999)
+        printf("%-15d %s\n", sizei, path);
     else 
-        printf("%-7d %s\n", size, path);
+        printf("%-7d %s\n", sizei, path);
 }
 
-int calculateFileSize(struct stat *stat_buf) {
+double calculateFileSize(struct stat *stat_buf) {
     int fileSize = 0;
     if (bytes) { 
         fileSize = stat_buf->st_size;
         if (block_size == -1){              // by default block_size = -1 porque quando se usa -b sem -B não se divide por 1024
             return fileSize;
         } else {
-            return fileSize/block_size;
+            return fileSize*1.0/block_size;
         }
     }
-    else fileSize = ceil(stat_buf->st_blocks * 512);
+    else fileSize = stat_buf->st_blocks * 512;
 
     if (block_size == -1)
-        return ceil(fileSize/1024);
+        return fileSize/1024;
     else {
-        return ceil(fileSize*1.0/block_size);
+        return fileSize*1.0/block_size;
     }
 }
 
@@ -241,8 +239,8 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     struct stat stat_buf;
     char *newpath = malloc(MAX_STRING_SIZE), * info = malloc(MAX_STRING_SIZE);
     char buffer[MAX_STRING_SIZE];
-    int currentDirSize = 0;
-    int fileSize;
+    double currentDirSize = 0.0;
+    double fileSize;
     pid_t pid;
     bool jumpDir = false;
 
@@ -307,10 +305,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 
                     readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
                     close(pipefd[READ]);
-                    fileSize += atoi(buffer); // very important that it is +=
+                    fileSize += atof(buffer); // very important that it is +=
                     
                     if (currentDepth > 0)
-                        printInfoLine(fileSize, newpath);
+                        printInfoLine(ceil(fileSize), newpath);
                     
                     if (!separate_dirs)
                         currentDirSize += fileSize;
@@ -335,13 +333,13 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 currentDirSize += fileSize;
             }
 
-            sprintf(info, "%d \t\t %s", fileSize, newpath);
+            sprintf(info, "%f \t\t %s", fileSize, newpath);
             logEVENT(ENTRY, getpid(), info);
 
         }
     }
 
-    sprintf(info, "%d", currentDirSize);
+    sprintf(info, "%f", currentDirSize);
     writePipe(outputFD, info, sizeof(info));
 
     free(info);
