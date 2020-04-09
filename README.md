@@ -6,7 +6,7 @@ Project for the Operating Systems class @ FEUP
 - [x] du (-l)
 - [x] -a/--all
 - [ ] -b/--bytes  (Working but having a size difference from du because of log file)
-- [x] -B/--block-size
+- [ ] -B/--block-size (Working when block-size is a power of 2 but not on some other cases)
 - [x] -L/--dereference
 - [x] -S/--separate-dirs
 - [x] --max-depth
