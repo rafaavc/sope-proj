@@ -44,7 +44,7 @@ char * logFilename;
 int childrenPGID = 0;
 
 void printUsage() {
-    printf("\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n");
+    write(STDOUT_FILENO, "\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n", 193);
 }
 
 char * getCommandLineArgs(int argc, char * argv[]) {
@@ -80,6 +80,7 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                 }
                 break;
             case 'l':
+                // count_links is assumed to be always activated
                 break;
             case 'L':
                 dereference = true;
@@ -110,7 +111,6 @@ char * getCommandLineArgs(int argc, char * argv[]) {
             // when it's -B, --block-size and --max-depth the value may be separated by space
             i++;
         } else if (argv[i][0] != '-'){
-            //printf("Path: %s\n", argv[i]);
             path = argv[i];
             break;
         }
@@ -145,20 +145,17 @@ void signalHandler(int signo) {
         logEVENT(SEND_SIGNAL, getpid(), str);
         while(true) {
             char* opt = malloc(MAX_STRING_SIZE);
-            printf("\nAre you sure you want to terminate execution? (Y/N) ");
+            write(STDOUT_FILENO, "\nAre you sure you want to terminate execution? (Y/N) ", 54);
             scanf("%s", opt);
             char optc = opt[0];
             free(opt);
 
             if (optc == 'Y' || optc == 'y') {
-                printf("Terminating execution.\n");
                 killpg(childrenPGID, SIGTERM);
                 logEVENT(SEND_SIGNAL, getpid(), str);
                 terminateProcess(130);
                 break;
             } else if (optc == 'N' || optc == 'n') {
-                // Send SIGCONT to children
-                printf("Resuming execution.\n");
                 killpg(childrenPGID, SIGCONT);
                 sprintf(str, "SIGCONT %d", childrenPGID);
                 logEVENT(SEND_SIGNAL, getpid(), str);
