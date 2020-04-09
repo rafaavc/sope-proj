@@ -241,7 +241,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 
 
     if (masterProcess) {
-        if (lstat(path, &stat_buf) != 0) {
+        if (stat(path, &stat_buf) != 0) {
             perror(path);
             terminateProcess(EXIT_FAILURE);
         }
@@ -319,7 +319,9 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     sprintf(info, "max-depth: %-10d, %s", currentDepth-1, newpath);
                     logEVENT(CREATE, getpid(), info);
 
-                    checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
+                    if (S_ISLNK(stat_buf.st_mode)) checkDirectory(true, newpath, currentDepth-1, pipefd[WRITE]); 
+                    else checkDirectory(false, newpath, currentDepth-1, pipefd[WRITE]);
+
                     close(pipefd[WRITE]);
                     terminateProcess(EXIT_SUCCESS);
                 } else {
