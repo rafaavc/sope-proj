@@ -22,8 +22,8 @@ void openLogFile() {
     close(open(logFilename, O_WRONLY | O_TRUNC | O_CREAT, 0644));
     fd = open(logFilename, O_WRONLY | O_APPEND);
     if (fd == -1) {
-        perror("Error opening log file");
-        terminateProcess(EXIT_FAILURE);
+        perror("Error creating/opening log file");
+        exit(EXIT_FAILURE); // can't use terminateProcess because can't log
     }
 }
 
