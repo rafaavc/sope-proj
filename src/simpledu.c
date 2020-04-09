@@ -180,16 +180,9 @@ void installSignalHandler() {
 
 void printInfoLine(double size, char * path) {
     int sizei = ceil(size);
-    if (sizei > 9999999) {
-        char str[MAX_STRING_SIZE];
-        sprintf(str, "%-15d %s\n", sizei, path);
-        write(STDOUT_FILENO, str, strlen(str));
-    }
-    else {
-        char str[MAX_STRING_SIZE];
-        sprintf(str, "%-7d %s\n", sizei, path);
-        write(STDOUT_FILENO, str, strlen(str));
-    }
+    char str[MAX_STRING_SIZE];
+    sprintf(str, "%d\t%s\n", sizei, path);
+    write(STDOUT_FILENO, str, strlen(str));
 }
 
 double calculateFileSize(struct stat *stat_buf) {
@@ -278,14 +271,6 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             }
             
             fileSize = calculateFileSize(&stat_buf);
-
-            /* S_ISREG(m) is it a regular file?
-            S_ISDIR(m) directory?
-            S_ISCHR(m) character device?
-            S_ISBLK(m) block device?
-            S_ISFIFO(m) FIFO (named pipe)?
-            S_ISLNK(m) symbolic link? (Not in POSIX.1-1996.)
-            S_ISSOCK(m) socket? (Not in POSIX.1-1996.) */
 
             if (S_ISDIR(stat_buf.st_mode) || (S_ISLNK(stat_buf.st_mode) && dereference)) {
                 int pipefd[2];
