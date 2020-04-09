@@ -254,8 +254,9 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     if (!jumpDir) {
         if ((dirp = opendir(path)) == NULL)
         {
-            perror(path);
-            terminateProcess(EXIT_FAILURE);
+            // This is not a path (is a file) - this may happen on file symbolic links or when user wants to know size of file
+            writePipe(outputFD, &currentDirSize, sizeof(currentDirSize));
+            terminateProcess(EXIT_SUCCESS);
         }
 
         while ((direntp = readdir( dirp)) != NULL)
@@ -297,6 +298,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     close(pipefd[WRITE]);
                     int status;
                     waitpid(pid, &status, 0);
+
+                    if (status != 0) {
+                        terminateProcess(EXIT_FAILURE);
+                    }
 
                     readPipe(pipefd[READ], &buffer, sizeof(buffer));
                     close(pipefd[READ]);
@@ -368,6 +373,10 @@ int main(int argc, char* argv[]){
         childrenPGID = pid;
         int status;
         waitpid(pid, &status, 0);
+
+        if (status != 0) {
+            terminateProcess(EXIT_FAILURE);
+        }
 
         readPipe(pipefd[READ], &buffer, sizeof(buffer));
         close(pipefd[READ]);
