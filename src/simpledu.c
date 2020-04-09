@@ -227,14 +227,20 @@ double calculateFileSize(struct stat *stat_buf) {
 }
 
 
-int writePipe(int fd, void * buffer, int bufferSize) {
-    logEVENT(SEND_PIPE, getpid(), buffer);
+int writePipe(int fd, double * buffer, int bufferSize) {
+    char * info = malloc(MAX_STRING_SIZE);
+    sprintf(info, "%d", (int) ceil(*buffer));
+    logEVENT(SEND_PIPE, getpid(), info);
+    free(info);
     return write(fd, buffer, bufferSize);
 }
 
-int readPipe(int fd, void * buffer, int bufferSize) {
+int readPipe(int fd, double * buffer, int bufferSize) {
     int ret = read(fd, buffer, bufferSize);
-    logEVENT(RECV_PIPE, getpid(), buffer);
+    char * info = malloc(MAX_STRING_SIZE);
+    sprintf(info, "%d", (int) ceil(*buffer));
+    logEVENT(RECV_PIPE, getpid(), info);
+    free(info);
     return ret;
 }
 
@@ -244,9 +250,7 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     struct dirent *direntp;
     struct stat stat_buf;
     char *newpath = malloc(MAX_STRING_SIZE), * info = malloc(MAX_STRING_SIZE);
-    char buffer[MAX_STRING_SIZE];
-    double currentDirSize = 0.0;
-    double fileSize;
+    double buffer, currentDirSize = 0.0, fileSize;
     pid_t pid;
     bool jumpDir = false;
 
@@ -309,12 +313,12 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                     int status;
                     waitpid(pid, &status, 0);
 
-                    readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
+                    readPipe(pipefd[READ], &buffer, sizeof(buffer));
                     close(pipefd[READ]);
-                    fileSize += atof(buffer); // very important that it is +=
+                    fileSize += buffer; // very important that it is +=
                     
                     if (currentDepth > 0)
-                        printInfoLine(ceil(fileSize), newpath);
+                        printInfoLine(fileSize, newpath);
                     
                     if (!separate_dirs)
                         currentDirSize += fileSize;
@@ -339,14 +343,13 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 currentDirSize += fileSize;
             }
 
-            sprintf(info, "%f \t\t %s", fileSize, newpath);
+            sprintf(info, "%d \t\t %s", (int) ceil(fileSize), newpath);
             logEVENT(ENTRY, getpid(), info);
 
         }
     }
 
-    sprintf(info, "%f", currentDirSize);
-    writePipe(outputFD, info, sizeof(info));
+    writePipe(outputFD, &currentDirSize, sizeof(currentDirSize));
 
     free(info);
 
@@ -367,7 +370,7 @@ int main(int argc, char* argv[]){
 
     int pipefd[2];
     pid_t pid;
-    char buffer[MAX_STRING_SIZE];
+    double buffer;
     char * info = malloc(MAX_STRING_SIZE);
 
     if (pipe(pipefd) == -1) {
@@ -381,12 +384,12 @@ int main(int argc, char* argv[]){
         int status;
         waitpid(pid, &status, 0);
 
-        readPipe(pipefd[READ], buffer, MAX_STRING_SIZE);
+        readPipe(pipefd[READ], &buffer, sizeof(buffer));
         close(pipefd[READ]);
-        double dirSize = atof(buffer);
+        int dirSize = ceil(buffer);
         
         printInfoLine(dirSize, path);
-        sprintf(info, "%f \t\t %s", dirSize, path);
+        sprintf(info, "%d \t\t %s", (int) ceil(dirSize), path);
         logEVENT(ENTRY, getpid(), info);
     } else if (pid == 0) {
         close(pipefd[READ]);
