@@ -185,7 +185,7 @@ void installSignalHandler() {
 }
 
 void printInfoLine(double size, char * path) {
-    int sizei = ceil(size);
+    int sizei = ceil(round(size*1000.)/1000.);
     char str[MAX_STRING_SIZE];
     sprintf(str, "%d\t%s\n", sizei, path);
     write(STDOUT_FILENO, str, strlen(str));
@@ -201,10 +201,10 @@ double calculateFileSize(struct stat *stat_buf) {
             return fileSize*1.0/block_size;
         }
     }
-    else fileSize = stat_buf->st_blocks * 512;
+    else fileSize = stat_buf->st_blocks * 512.;
 
     if (block_size == -1)
-        return fileSize/1024;
+        return fileSize*1.0/1024;
     else {
         return fileSize*1.0/block_size;
     }
