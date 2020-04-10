@@ -43,6 +43,11 @@ char * logFilename;
 
 int childrenPGID = 0;
 
+struct pipeInfo {
+    double Psize;
+    bool Pdir; // whether the path was a dir
+};
+
 void printUsage() {
     write(STDOUT_FILENO, "\nUsage:\n\nsimpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\nsimpledu --count-links [path] [--all] [--bytes] [--block-size size] [--dereference] [--separate-dirs] [--max-depth=N]\n", 193);
 }
@@ -206,18 +211,18 @@ double calculateFileSize(struct stat *stat_buf) {
 }
 
 
-int writePipe(int fd, double * buffer, int bufferSize) {
+int writePipe(int fd, struct pipeInfo * buffer, int bufferSize) {
     char * info = malloc(MAX_STRING_SIZE);
-    sprintf(info, "%lf", *buffer);
+    sprintf(info, "%lf, %d", buffer->Psize, buffer->Pdir);
     logEVENT(SEND_PIPE, getpid(), info);
     free(info);
     return write(fd, buffer, bufferSize);
 }
 
-int readPipe(int fd, double * buffer, int bufferSize) {
+int readPipe(int fd, struct pipeInfo * buffer, int bufferSize) {
     int ret = read(fd, buffer, bufferSize);
     char * info = malloc(MAX_STRING_SIZE);
-    sprintf(info, "%lf", *buffer);
+    sprintf(info, "%lf, %d", buffer->Psize, buffer->Pdir);
     logEVENT(RECV_PIPE, getpid(), info);
     free(info);
     return ret;
@@ -229,7 +234,8 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
     struct dirent *direntp;
     struct stat stat_buf;
     char *newpath = malloc(MAX_STRING_SIZE), * info = malloc(MAX_STRING_SIZE);
-    double buffer, currentDirSize = 0.0, fileSize;
+    struct pipeInfo buffer;
+    double currentDirSize = 0.0, fileSize;
     pid_t pid;
     bool jumpDir = false;
 
@@ -240,6 +246,10 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
             terminateProcess(EXIT_FAILURE);
         }
         currentDirSize += calculateFileSize(&stat_buf);
+        if (lstat(path, &stat_buf) != 0) {
+            perror(path);
+            terminateProcess(EXIT_FAILURE);
+        }
         if (S_ISLNK(stat_buf.st_mode) && !dereference) {
             jumpDir = true;
         }
@@ -249,7 +259,9 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
         if ((dirp = opendir(path)) == NULL)
         {
             // This is not a path (is a file) - this may happen on file symbolic links or when user wants to know size of file
-            writePipe(outputFD, &currentDirSize, sizeof(currentDirSize));
+            buffer.Psize = currentDirSize;
+            buffer.Pdir = false;
+            writePipe(outputFD, &buffer, sizeof(buffer));
             terminateProcess(EXIT_SUCCESS);
         }
 
@@ -270,8 +282,9 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
                 perror(newpath);
                 terminateProcess(EXIT_FAILURE);
             }
-            
-            fileSize = calculateFileSize(&stat_buf);
+            if (!S_ISLNK(stat_buf.st_mode)) {
+                fileSize = calculateFileSize(&stat_buf);
+            }
 
             if (S_ISDIR(stat_buf.st_mode) || (S_ISLNK(stat_buf.st_mode) && dereference)) {
                 int pipefd[2];
@@ -291,12 +304,14 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
 
                     readPipe(pipefd[READ], &buffer, sizeof(buffer));
                     close(pipefd[READ]);
-                    fileSize += buffer; // very important that it is +=
+                    fileSize += buffer.Psize; // very important that it is +=
                     
+                    // for max-depth
                     if (currentDepth > 0)
                         printInfoLine(fileSize, newpath);
-                    
-                    if (!separate_dirs)
+                
+                    // for separate dirs
+                    if (!separate_dirs || !buffer.Pdir)
                         currentDirSize += fileSize;
 
                 } else if (pid == 0) {
@@ -327,7 +342,9 @@ void checkDirectory(bool masterProcess, char * path, int currentDepth, int outpu
         }
     }
 
-    writePipe(outputFD, &currentDirSize, sizeof(currentDirSize));
+    buffer.Pdir = true;
+    buffer.Psize = currentDirSize;
+    writePipe(outputFD, &buffer, sizeof(buffer));
 
     free(info);
 
@@ -348,7 +365,7 @@ int main(int argc, char* argv[]){
 
     int pipefd[2];
     pid_t pid;
-    double buffer;
+    struct pipeInfo buffer;
     char * info = malloc(MAX_STRING_SIZE);
 
     if (pipe(pipefd) == -1) {
@@ -368,7 +385,7 @@ int main(int argc, char* argv[]){
 
         readPipe(pipefd[READ], &buffer, sizeof(buffer));
         close(pipefd[READ]);
-        int dirSize = ceil(buffer);
+        int dirSize = ceil(buffer.Psize);
         
         printInfoLine(dirSize, path);
         sprintf(info, "%d \t\t %s", (int) ceil(dirSize), path);
