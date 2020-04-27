@@ -21,6 +21,8 @@ char * getCommandLineArgs(int argc, char * argv[]) {
                     exit(EXIT_FAILURE);
                 }
                 break;
+            case '?':
+                exit(EXIT_FAILURE);
             default:
                 break;
         }
