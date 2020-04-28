@@ -72,6 +72,10 @@ QArgs getCommandLineArgsQ(int argc, char * argv[]) {
         }
     }
 
+    if (res.nsecs == -1) {
+        printf("nsecs is required\n");
+        exit(EXIT_FAILURE);
+    }
     res.fifoname = getFifoname(argc, argv);
 
     return res;
@@ -99,6 +103,10 @@ UArgs getCommandLineArgsU(int argc, char * argv[]) {
         }
     }
 
+    if (res.nsecs == -1) {
+        printf("nsecs is required\n");
+        exit(EXIT_FAILURE);
+    }
     res.fifoname = getFifoname(argc, argv);
 
     return res;

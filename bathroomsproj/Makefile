@@ -1,12 +1,12 @@
 CC=gcc
 _DEPS = cmdargs.h opreg.h
-_ServerOBJ = Q1.o cmdargs.o opreg.o
-_ClientOBJ = U1.o cmdargs.o opreg.o
+_ServerOBJ = q.o cmdargs.o opreg.o
+_ClientOBJ = u.o cmdargs.o opreg.o
 OBJDIR = obj
 SRCDIR = src
 ServerNAME = Q1
 ClientNAME = U1
-CFLAGS = -Wall -pthread #-lm
+CFLAGS = -Wall -pthread -lrt #-lm
 
 ServerOBJ = $(patsubst %,$(OBJDIR)/%,$(_ServerOBJ))
 ClientOBJ = $(patsubst %,$(OBJDIR)/%,$(_ClientOBJ))
