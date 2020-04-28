@@ -1,7 +1,7 @@
 CC=gcc
-_DEPS = cmdargs.h
-_ServerOBJ = Q1.o cmdargs.o
-_ClientOBJ = U1.o cmdargs.o
+_DEPS = cmdargs.h opreg.h
+_ServerOBJ = Q1.o cmdargs.o opreg.o
+_ClientOBJ = U1.o cmdargs.o opreg.o
 OBJDIR = obj
 SRCDIR = src
 ServerNAME = Q1

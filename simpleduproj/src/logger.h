@@ -7,7 +7,7 @@ enum EVENT {
     SEND_PIPE,
     ENTRY
 };
-
+ 
 /**
  * Clears the contents and opens the log file
 */

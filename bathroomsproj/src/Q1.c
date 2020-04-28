@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
 #include "cmdargs.h"
+#include "opreg.h"
 
 #define MAX_STRING_SIZE 512
 int nsecs;

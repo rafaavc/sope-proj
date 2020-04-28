@@ -16,7 +16,7 @@ int fd;
 struct timespec start;
 
 char * eventStrings[7] = {"CREATE", "EXIT", "RECV_SIGNAL", "SEND_SIGNAL", "RECV_PIPE", "SEND_PIPE", "ENTRY"};
-
+ 
 void openLogFile() {
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     close(open(logFilename, O_WRONLY | O_TRUNC | O_CREAT, 0644));
