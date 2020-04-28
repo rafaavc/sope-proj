@@ -6,14 +6,15 @@
 int nsecs;
 char * fifoname;
 
-int main(int argc, char ** argv) {
+void setArgs(int argc, char ** argv) {
     UArgs args = getCommandLineArgsU(argc, argv);
     nsecs = args.nsecs;
     fifoname = args.fifoname;
+}
 
-    if (nsecs != -1) printf("nsecs: %d\n", nsecs);
-    printf("fifoname: %s\n", fifoname);
-
+int main(int argc, char ** argv) {
+    setArgs(argc, argv);
+    
     exit(EXIT_SUCCESS);
 }
 

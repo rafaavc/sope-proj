@@ -6,14 +6,16 @@
 int nsecs;
 char * fifoname;
 
-int main(int argc, char ** argv) {
+void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
     nsecs = args.nsecs;
     fifoname = args.fifoname;
+    //nthreads = args.nthreads;
+    //nplaces = args.nplaces;
+}
 
-
-    if (nsecs != -1) printf("nsecs: %d\n", nsecs);
-    printf("fifoname: %s\n", fifoname);
-
+int main(int argc, char ** argv) {
+    setArgs(argc, argv);
+    
     exit(EXIT_SUCCESS);
 }
