@@ -6,7 +6,7 @@ OBJDIR = obj
 SRCDIR = src
 ServerNAME = Q1
 ClientNAME = U1
-CFLAGS = -Wall -pthread -lm
+CFLAGS = -Wall -pthread #-lm
 
 ServerOBJ = $(patsubst %,$(OBJDIR)/%,$(_ServerOBJ))
 ClientOBJ = $(patsubst %,$(OBJDIR)/%,$(_ClientOBJ))
