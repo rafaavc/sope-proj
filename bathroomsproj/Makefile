@@ -17,6 +17,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c $(DEPS)
 	@$(CC) -c -o $@ $< $(CFLAGS)
 
 all: $(ServerNAME) $(ClientNAME)
+	@echo done
 
 $(ServerNAME): $(ServerOBJ)
 	@$(CC) -o $@ $^ $(CFLAGS)
