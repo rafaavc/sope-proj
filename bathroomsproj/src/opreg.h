@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 enum OPERATION {
     IWANT,  // - cliente faz pedido inicial
     RECVD,  // - servidor acusa receção de pedido
@@ -19,10 +21,10 @@ enum OPERATION {
  * @param dur duração, em milissegundos, de utilização do Quarto de Banho
  * @param pl nº de lugar que eventualmente lhe será atribuído no Quarto de Banho 
  * @param oper operação que o processo acabou de executar
- * @param fd file descriptor to write to
+ * @param n number of file descriptors
  * 
  */
-char *logOperation();
+void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, int n, ...);
 
 /**
  * @brief Separete log parameters

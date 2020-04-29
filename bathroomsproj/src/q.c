@@ -7,14 +7,19 @@
 #include "cmdargs.h"
 #include "opreg.h"
 #include <string.h>
-#include <semaphore.h>
+//#include <semaphore.h>
 #include <stdbool.h>
 
 #define MAX_STRING_SIZE 512
+#define NOFD -1
+
 int nsecs, fd;
 char * fifoname;
 sem_t empty;
 bool bathroomOpen = true;
+
+int placesCount = 0; // shared vars
+pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
@@ -32,35 +37,35 @@ void *receiveRequest(void * args){
     long t, tid;
     enum OPERATION oper;
 
-    
-    int numbers[6];
+    //int numbers[6];
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    oper = RECVD;
-    logOperation(i, getpid(), pthread_self(), dur, pl, oper, STDOUT_FILENO);
+    
+    if (oper == IWANT) {
+        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, 1, STDOUT_FILENO);
 
-    sprintf(private_fifoname, "/tmp/%d.%ld", pid, tid);
+        sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
 
     if ((privatefd = open(private_fifoname, O_WRONLY)) <= 0){
-        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP);
+        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, 1, STDOUT_FILENO);
         return NULL;
     }
 
 
     if (!bathroomOpen){
-        string = logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, STDOUT_FILENO);
-        write(privatefd, string, strlen(string));
+        logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, 2, STDOUT_FILENO, privatefd);
         return NULL;
     }
 
     static int count = 0;
-    string = logOperation(i, getpid(), pthread_self(), dur, count, ENTER, STDOUT_FILENO);
-    count++;
-    write(privatefd, string, strlen(string));
+    pthread_mutex_lock(&mut);
+    logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, 2, STDOUT_FILENO, privatefd);
+    placesCount++;
+    pthread_mutex_unlock(&mut);
 
     usleep(dur);
 
-    string = logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, STDOUT_FILENO);
+    logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, 1, STDOUT_FILENO);
 
     return NULL;
 }
@@ -72,8 +77,6 @@ int main(int argc, char ** argv) {
     
     mkfifo(fifoname, 0660);
     fd = open(fifoname, O_RDONLY, 0644);
-
-    sem_init(&empty, 0, 1);
 
     int count = 0;
     while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
