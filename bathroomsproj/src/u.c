@@ -25,7 +25,7 @@ void setArgs(int argc, char ** argv) {
 
 
 void waitResponse(){
-    int privatefd, numbers[6];
+    int privatefd; //, numbers[6];
     char *private_fifoname = malloc(MAX_STRING_SIZE);
     sprintf(private_fifoname, "/tmp/%d.%ld", getpid(), pthread_self());
     mkfifo(private_fifoname, 0644);
@@ -41,11 +41,12 @@ void waitResponse(){
     enum OPERATION oper;
 
     read(privatefd, string, MAX_STRING_SIZE);
-
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    oper = IAMIN;
-    logOperation(i, pid, tid, dur, pl, oper, STDOUT_FILENO);
+    
+    if (oper == ENTER) logOperation(i, pid, tid, dur, pl, IAMIN, 1, STDOUT_FILENO);
 
+    free(string);
+    free(private_fifoname);
 }
 
 void * sendRequest(void *args){

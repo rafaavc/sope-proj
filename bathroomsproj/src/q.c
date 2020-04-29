@@ -15,6 +15,9 @@
 int nsecs, fd;
 char * fifoname;
 
+int placesCount = 0; // shared vars
+pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
     nsecs = args.nsecs;
@@ -40,9 +43,10 @@ void *receiveRequest(void * args){
 
     while((privatefd = open(private_fifoname, O_WRONLY)) <= 0) sleep(1);
 
-    static int count = 0;
-    logOperation(i, getpid(), pthread_self(), dur, count, ENTER, 2, STDOUT_FILENO, privatefd);
-    count++;
+    pthread_mutex_lock(&mut);
+    logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, 2, STDOUT_FILENO, privatefd);
+    placesCount++;
+    pthread_mutex_unlock(&mut);
 
     return NULL;
 }

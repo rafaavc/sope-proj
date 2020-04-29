@@ -53,8 +53,7 @@ void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATI
 }
 
 void receiveLogOperation(char *string, long *t, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper){
-    char *stok = malloc(MAX_STRING_SIZE);
-    stok = strtok(string, ";");
+    char * stok = strtok(string, ";");
 
     *t = atol(stok);
     stok = strtok(NULL, ";");
@@ -67,9 +66,10 @@ void receiveLogOperation(char *string, long *t, int *i, pid_t *pid, pthread_t *t
     *dur = atoi(stok);
     stok = strtok(NULL, ";");
     *pl = atoi(stok);
-    
+    stok = strtok(NULL, ";");
+
     for (int i = 0; i < 9; i++){
-        if (strcmp(opStrings[i], stok) == 0){
+        if (strstr(stok, opStrings[i]) != NULL){
             *oper = i;
         }
     }
