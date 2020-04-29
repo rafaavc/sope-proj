@@ -45,6 +45,9 @@ void waitResponse(){
     
     if (oper == ENTER) logOperation(i, pid, tid, dur, pl, IAMIN, 1, STDOUT_FILENO);
 
+    close(privatefd);
+    unlink(private_fifoname);
+
     free(string);
     free(private_fifoname);
 }
@@ -77,7 +80,7 @@ int main(int argc, char ** argv) {
     while(bathroomOpen && (clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
         pthread_create(&thread, NULL, sendRequest, (void *) &count);
-        unsigned msInterval = 80 + (((float)rand()/RAND_MAX)*80);
+        unsigned msInterval = 80 + rand()%80;
         usleep(msInterval*1000); // sleeps a random number of milliseconds (from 80 to 160)
         count++;
     }

@@ -37,16 +37,19 @@ void *receiveRequest(void * args){
     //int numbers[6];
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, 1, STDOUT_FILENO);
+    
+    if (oper == IWANT) {
+        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, 1, STDOUT_FILENO);
 
-    sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
+        sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
 
-    while((privatefd = open(private_fifoname, O_WRONLY)) <= 0) sleep(1);
+        while((privatefd = open(private_fifoname, O_WRONLY)) <= 0) sleep(1);
 
-    pthread_mutex_lock(&mut);
-    logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, 2, STDOUT_FILENO, privatefd);
-    placesCount++;
-    pthread_mutex_unlock(&mut);
+        pthread_mutex_lock(&mut);
+        logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, 2, STDOUT_FILENO, privatefd);
+        placesCount++;
+        pthread_mutex_unlock(&mut);
+    }
 
     return NULL;
 }
