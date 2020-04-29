@@ -35,9 +35,32 @@ preenchido com o valor -1 e na resposta terá o valor do lugar efetivamente ocup
 na sequência de insucesso de ocupação, por motivo de encerramento)
 */
 
-void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper) {
+char *logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, int fd) {
     char * op = malloc(MAX_STRING_SIZE);
     sprintf(op, "%ld ; %d ; %d ; %lu ; %d ; %d ; %s\n", time(NULL), i, pid, tid, dur, pl, opStrings[oper]);
-    write(STDOUT_FILENO, op, strlen(op));
-    free(op);
+    write(fd, op, strlen(op));
+    return op;
+}
+
+void receiveLogOperation(char *string, long *t, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper){
+    char *stok = malloc(MAX_STRING_SIZE);
+    stok = strtok(string, ";");
+
+    *t = atol(stok);
+    stok = strtok(NULL, ";");
+    *i = atoi(stok);
+    stok = strtok(NULL, ";");
+    *pid = atoi(stok);
+    stok = strtok(NULL, ";");
+    *tid = atol(stok);
+    stok = strtok(NULL, ";");
+    *dur = atoi(stok);
+    stok = strtok(NULL, ";");
+    *pl = atoi(stok);
+    
+    for (int i = 0; i < 9; i++){
+        if (strcmp(opStrings[i], stok) == 0){
+            *oper = i;
+        }
+    }
 }

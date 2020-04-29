@@ -22,23 +22,20 @@ void setArgs(int argc, char ** argv) {
     //nplaces = args.nplaces;
 }
 
+
 void *receiveRequest(void * args){
-    char *string = malloc(MAX_STRING_SIZE), *stok = malloc(MAX_STRING_SIZE);
+    char *string = malloc(MAX_STRING_SIZE);
+    int i, pid, dur, pl;
+    long t, tid;
+    enum OPERATION oper;
 
     if (read(fd, string, MAX_STRING_SIZE) <= 0) return NULL;
     
-    int numbers[6], i = 0;
+    int numbers[6];
 
-    stok = strtok(string, ";");
-
-    do {
-        numbers[i++] = atoi(stok);
-    } while((stok = strtok(NULL, ";")) != NULL);
-
-    for (int i = 0; i < 6; i++){
-        printf("%d; ", numbers[i]);
-    }
-    printf("RECVD\n");
+    receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
+    oper = RECVD;
+    logOperation(i, pid, tid, dur, pl, oper, STDOUT_FILENO);
 
     return NULL;
 }
@@ -49,7 +46,7 @@ int main(int argc, char ** argv) {
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
     mkfifo(fifoname, 0660);
-    fd = open(fifoname, O_RDONLY | O_CREAT, 0644);
+    fd = open(fifoname, O_RDONLY, 0644);
 
     sem_init(&sem, 0, 1);
 

@@ -11,6 +11,29 @@ enum OPERATION {
 };
 
 /**
- *  Logs operation to stdout
+ * @brief Log operations to fd
+ * 
+ * @param i número sequencial do pedido
+ * @param pid identificador de sistema do processo
+ * @param tid identificador no sistema do thread
+ * @param dur duração, em milissegundos, de utilização do Quarto de Banho
+ * @param pl nº de lugar que eventualmente lhe será atribuído no Quarto de Banho 
+ * @param oper operação que o processo acabou de executar
+ * @param fd file descriptor to write to
+ * 
  */
-void logOperation();
+char *logOperation();
+
+/**
+ * @brief Separete log parameters
+ * 
+ * @param string string from logOperation
+ * @param t time
+ * @param i número sequencial do pedido
+ * @param pid identificador de sistema do processo
+ * @param tid identificador no sistema do thread
+ * @param dur duração, em milissegundos, de utilização do Quarto de Banho
+ * @param pl nº de lugar que eventualmente lhe será atribuído no Quarto de Banho 
+ * @param oper operação que o processo acabou de executar
+ */
+void receiveLogOperation();

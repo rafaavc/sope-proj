@@ -6,7 +6,9 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include "cmdargs.h"
+#include "opreg.h"
 #include <string.h>
+#include <sys/stat.h>
 
 #define MAX_STRING_SIZE 512
 int nsecs;
@@ -21,16 +23,43 @@ void setArgs(int argc, char ** argv) {
     fifoname = args.fifoname;
 }
 
+/*
+void waitResponse(){
+    int privatefd, numbers[6], i = 0;
+    char *private_fifoname = malloc(MAX_STRING_SIZE);
+    sprintf(private_fifoname, "/tmp/%d.%ld", getpid(), pthread_self());
+    mkfifo(private_fifoname, 0644);
+
+    if ((privatefd = open(private_fifoname, O_RDONLY)) <= 0){
+        printf("Error opening private fifo");
+        exit(1);
+    }
+
+    char *string = malloc(MAX_STRING_SIZE);
+    int i, pid, dur, pl;
+    long t, tid;
+    enum OPERATION oper;
+
+    read(privatefd, string, MAX_STRING_SIZE);
+
+    receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
+    oper = RECVD;
+    logOperation(i, pid, tid, dur, pl, oper, STDOUT_FILENO);
+
+}
+*/
+
 void * sendRequest(void *args){
     struct timespec t;
     int n = *(int *) args;
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
     srand(time(NULL));
     int dur = rand() % 20;
-    char *string = malloc(MAX_STRING_SIZE);
-    sprintf(string, "%ld;%d;%d;%ld;%d;%d", t.tv_sec, n, getpid(), pthread_self(), dur, -1);
-    printf("%s; IWANT\n", string);
+    char *string = logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, STDOUT_FILENO);
     write(fd, string, strlen(string));
+
+    waitResponse();
+
     return NULL;
 }
 
