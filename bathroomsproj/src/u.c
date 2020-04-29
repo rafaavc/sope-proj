@@ -9,7 +9,6 @@
 #include <string.h>
 
 #define MAX_STRING_SIZE 512
-#define MAX_NUMBER_THREADS 100
 int nsecs;
 char * fifoname;
 bool bathroomOpen = true;
@@ -29,16 +28,15 @@ void * sendRequest(void *args){
     srand(time(NULL));
     int dur = rand() % 20;
     char *string = malloc(MAX_STRING_SIZE);
-    sprintf(string, "%ld; %d; %d; %ld; %d; %d; IWANT\n", t.tv_sec, n, getpid(), pthread_self(), dur, -1);
+    sprintf(string, "%ld;%d;%d;%ld;%d;%d", t.tv_sec, n, getpid(), pthread_self(), dur, -1);
+    printf("%s; IWANT\n", string);
     write(fd, string, strlen(string));
-    printf("%s", string);
     return NULL;
 }
 
 
 int main(int argc, char ** argv) {
     setArgs(argc, argv);
-    pthread_t threads[MAX_NUMBER_THREADS];
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
@@ -48,13 +46,15 @@ int main(int argc, char ** argv) {
 
     srand(time(0));
     int count = 0;
-    while(bathroomOpen && clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs && count < MAX_NUMBER_THREADS) {
-        pthread_create(&threads[count], NULL, sendRequest, (void *) &count);
+    while(bathroomOpen && clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
+        pthread_t thread;
+        pthread_create(&thread, NULL, sendRequest, (void *) &count);
         unsigned msInterval = 80 + (((float)rand()/RAND_MAX)*80);
         usleep(msInterval*1000); // sleeps a random number of milliseconds (from 80 to 160)
         count++;
     }
 
+    close(fd);
     exit(EXIT_SUCCESS);
 }
 
