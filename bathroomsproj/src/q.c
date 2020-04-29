@@ -15,7 +15,6 @@
 
 int nsecs, fd;
 char * fifoname;
-sem_t empty;
 bool bathroomOpen = true;
 
 int placesCount = 0; // shared vars
@@ -45,6 +44,7 @@ void *receiveRequest(void * args){
         logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, 1, STDOUT_FILENO);
 
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
+    }
 
     if ((privatefd = open(private_fifoname, O_WRONLY)) <= 0){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, 1, STDOUT_FILENO);
@@ -57,7 +57,6 @@ void *receiveRequest(void * args){
         return NULL;
     }
 
-    static int count = 0;
     pthread_mutex_lock(&mut);
     logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, 2, STDOUT_FILENO, privatefd);
     placesCount++;
@@ -78,13 +77,11 @@ int main(int argc, char ** argv) {
     mkfifo(fifoname, 0660);
     fd = open(fifoname, O_RDONLY, 0644);
 
-    int count = 0;
     while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
         pthread_t thread;
         char *string = malloc(MAX_STRING_SIZE);
         if (read(fd, string, MAX_STRING_SIZE) > 0){
             pthread_create(&thread, NULL, receiveRequest, (int *) &string[0]);
-            count++;
         }
     }
     bathroomOpen = false;
