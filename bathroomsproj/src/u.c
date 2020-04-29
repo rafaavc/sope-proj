@@ -9,12 +9,12 @@
 #include "opreg.h"
 #include <string.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #define MAX_STRING_SIZE 512
 int nsecs;
 char * fifoname;
 bool bathroomOpen = true;
-int fd;
 
 
 void setArgs(int argc, char ** argv) {
@@ -43,22 +43,35 @@ void waitResponse(){
     read(privatefd, string, MAX_STRING_SIZE);
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    oper = IAMIN;
-    logOperation(i, pid, tid, dur, pl, oper, STDOUT_FILENO);
+    logOperation(i, getpid(), pthread_self(), dur, pl, IAMIN, STDOUT_FILENO);
 
+    if (oper == TLATE){
+        bathroomOpen = false;
+        logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, STDOUT_FILENO);
+    }
+
+    close(privatefd);
+    unlink(private_fifoname);
 }
 
 void * sendRequest(void *args){
     struct timespec t;
     int n = *(int *) args;
+    int fd;
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
-    srand(time(NULL));
-    int dur = rand() % 20;
+    int dur = rand() % 2000;
+
+    if((fd = open(fifoname, O_WRONLY)) <= 0){
+        logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, STDOUT_FILENO);
+        return NULL;
+    }
+
     char *string = logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, STDOUT_FILENO);
     write(fd, string, strlen(string));
 
     waitResponse();
 
+    close(fd);
     return NULL;
 }
 
@@ -67,12 +80,8 @@ int main(int argc, char ** argv) {
     setArgs(argc, argv);
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    
-    while((fd = open(fifoname, O_WRONLY)) <= 0){
-        sleep(1);
-    }
 
-    srand(time(0));
+    srand(time(NULL));
     int count = 0;
     while(bathroomOpen && (clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
@@ -82,7 +91,6 @@ int main(int argc, char ** argv) {
         count++;
     }
 
-    close(fd);
-    exit(EXIT_SUCCESS);
+    pthread_exit(EXIT_SUCCESS);
 }
 

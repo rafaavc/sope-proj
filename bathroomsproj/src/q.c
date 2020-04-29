@@ -8,11 +8,13 @@
 #include "opreg.h"
 #include <string.h>
 #include <semaphore.h>
+#include <stdbool.h>
 
 #define MAX_STRING_SIZE 512
 int nsecs, fd;
 char * fifoname;
 sem_t empty;
+bool bathroomOpen = true;
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
@@ -39,13 +41,26 @@ void *receiveRequest(void * args){
 
     sprintf(private_fifoname, "/tmp/%d.%ld", pid, tid);
 
-    while((privatefd = open(private_fifoname, O_WRONLY)) <= 0) sleep(1);
+    if ((privatefd = open(private_fifoname, O_WRONLY)) <= 0){
+        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP);
+        return NULL;
+    }
 
-    oper = ENTER;
+
+    if (!bathroomOpen){
+        string = logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, STDOUT_FILENO);
+        write(privatefd, string, strlen(string));
+        return NULL;
+    }
+
     static int count = 0;
-    string = logOperation(i, getpid(), pthread_self(), dur, count, oper, privatefd);
+    string = logOperation(i, getpid(), pthread_self(), dur, count, ENTER, STDOUT_FILENO);
     count++;
-    printf("%s", string);
+    write(privatefd, string, strlen(string));
+
+    usleep(dur);
+
+    string = logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, STDOUT_FILENO);
 
     return NULL;
 }
@@ -69,8 +84,9 @@ int main(int argc, char ** argv) {
             count++;
         }
     }
+    bathroomOpen = false;
 
     close(fd);
     unlink(fifoname);
-    pthread_exit(0);
+    pthread_exit(EXIT_SUCCESS);
 }
