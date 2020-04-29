@@ -23,9 +23,9 @@ void setArgs(int argc, char ** argv) {
     fifoname = args.fifoname;
 }
 
-/*
+
 void waitResponse(){
-    int privatefd, numbers[6], i = 0;
+    int privatefd, numbers[6];
     char *private_fifoname = malloc(MAX_STRING_SIZE);
     sprintf(private_fifoname, "/tmp/%d.%ld", getpid(), pthread_self());
     mkfifo(private_fifoname, 0644);
@@ -43,11 +43,10 @@ void waitResponse(){
     read(privatefd, string, MAX_STRING_SIZE);
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    oper = RECVD;
+    oper = IAMIN;
     logOperation(i, pid, tid, dur, pl, oper, STDOUT_FILENO);
 
 }
-*/
 
 void * sendRequest(void *args){
     struct timespec t;

@@ -12,7 +12,7 @@
 #define MAX_STRING_SIZE 512
 int nsecs, fd;
 char * fifoname;
-sem_t sem;
+sem_t empty;
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
@@ -24,18 +24,28 @@ void setArgs(int argc, char ** argv) {
 
 
 void *receiveRequest(void * args){
-    char *string = malloc(MAX_STRING_SIZE);
-    int i, pid, dur, pl;
+    char *private_fifoname = malloc(MAX_STRING_SIZE);
+    char *string = (char *)args;
+    int i, pid, dur, pl, privatefd;
     long t, tid;
     enum OPERATION oper;
 
-    if (read(fd, string, MAX_STRING_SIZE) <= 0) return NULL;
     
     int numbers[6];
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
     oper = RECVD;
-    logOperation(i, pid, tid, dur, pl, oper, STDOUT_FILENO);
+    logOperation(i, getpid(), pthread_self(), dur, pl, oper, STDOUT_FILENO);
+
+    sprintf(private_fifoname, "/tmp/%d.%ld", pid, tid);
+
+    while((privatefd = open(private_fifoname, O_WRONLY)) <= 0) sleep(1);
+
+    oper = ENTER;
+    static int count = 0;
+    string = logOperation(i, getpid(), pthread_self(), dur, count, oper, privatefd);
+    count++;
+    printf("%s", string);
 
     return NULL;
 }
@@ -48,13 +58,16 @@ int main(int argc, char ** argv) {
     mkfifo(fifoname, 0660);
     fd = open(fifoname, O_RDONLY, 0644);
 
-    sem_init(&sem, 0, 1);
+    sem_init(&empty, 0, 1);
 
     int count = 0;
     while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
         pthread_t thread;
-        pthread_create(&thread, NULL, receiveRequest, NULL);
-        count++;
+        char *string = malloc(MAX_STRING_SIZE);
+        if (read(fd, string, MAX_STRING_SIZE) > 0){
+            pthread_create(&thread, NULL, receiveRequest, (int *) &string[0]);
+            count++;
+        }
     }
 
     close(fd);
