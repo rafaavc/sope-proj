@@ -12,11 +12,17 @@ typedef struct UArgs_struct UArgs;
 
 
 /**
- *  Gets the commandLineArgs for Q 
+ *  @brief Gets the commandLineArgs for Q 
+ * 
+ *  @param argc numero de argumentos
+ *  @param argv array de strings (argumentos)
  */
 QArgs getCommandLineArgsQ(int argc, char * argv[]);
 
 /**
- *  Gets the commansLineArgs for U
+ *  @brief Gets the commansLineArgs for U
+ * 
+ *  @param argc numero de argumentos
+ *  @param argv array de strings (argumentos)
  */
 UArgs getCommandLineArgsU(int argc, char * argv[]);
