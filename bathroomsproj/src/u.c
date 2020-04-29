@@ -46,7 +46,7 @@ int main(int argc, char ** argv) {
 
     srand(time(0));
     int count = 0;
-    while(bathroomOpen && clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
+    while(bathroomOpen && (clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
         pthread_create(&thread, NULL, sendRequest, (void *) &count);
         unsigned msInterval = 80 + (((float)rand()/RAND_MAX)*80);
