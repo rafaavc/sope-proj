@@ -8,7 +8,8 @@
 #include "opreg.h"
 
 #define MAX_STRING_SIZE 512
-int nsecs;
+#define MAX_NUMBER_THREADS 100
+int nsecs, fd;
 char * fifoname;
 
 void setArgs(int argc, char ** argv) {
@@ -19,21 +20,29 @@ void setArgs(int argc, char ** argv) {
     //nplaces = args.nplaces;
 }
 
+void *receiveRequest(void * args){
+    char *string = malloc(MAX_STRING_SIZE);
+    read(fd, string, MAX_STRING_SIZE);
+    printf("%s", string);
+    return NULL;
+}
+
 int main(int argc, char ** argv) {
     setArgs(argc, argv);
+    pthread_t threads[MAX_NUMBER_THREADS];
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
     mkfifo(fifoname, 0660);
-    int fd = open(fifoname, O_RDONLY | O_NONBLOCK);
+    fd = open(fifoname, O_RDONLY | O_CREAT, 0644);
 
     int count = 0;
-    while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
-        printf("receiving request %d\n", count);
+    while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs && count < MAX_NUMBER_THREADS) {
+        pthread_create(&threads[count], NULL, receiveRequest, NULL);
         count++;
     }
 
     close(fd);
     unlink(fifoname);
-    exit(EXIT_SUCCESS);
+    pthread_exit(0);
 }
