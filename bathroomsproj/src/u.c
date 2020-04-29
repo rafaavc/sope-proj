@@ -52,10 +52,9 @@ void * sendRequest(void *args){
     struct timespec t;
     int n = *(int *) args;
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
-    srand(time(NULL));
     int dur = rand() % 20;
-    char *string = logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, STDOUT_FILENO);
-    write(fd, string, strlen(string));
+
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, 2, STDOUT_FILENO, fd);
 
     waitResponse();
 

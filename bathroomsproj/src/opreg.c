@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdarg.h>
 
 #define MAX_STRING_SIZE 512
 
@@ -35,11 +36,20 @@ preenchido com o valor -1 e na resposta terá o valor do lugar efetivamente ocup
 na sequência de insucesso de ocupação, por motivo de encerramento)
 */
 
-char *logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, int fd) {
+
+
+void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, int n, ...) {
     char * op = malloc(MAX_STRING_SIZE);
     sprintf(op, "%ld ; %d ; %d ; %lu ; %d ; %d ; %s\n", time(NULL), i, pid, tid, dur, pl, opStrings[oper]);
-    write(fd, op, strlen(op));
-    return op;
+
+    va_list fds;
+    va_start(fds, n);
+    for (int i = 0; i < n; i++) {
+        int fd = va_arg(fds, int);
+        write(fd, op, strlen(op));
+    }
+    va_end(fds);
+    free(op);
 }
 
 void receiveLogOperation(char *string, long *t, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper){

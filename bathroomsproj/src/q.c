@@ -7,12 +7,13 @@
 #include "cmdargs.h"
 #include "opreg.h"
 #include <string.h>
-#include <semaphore.h>
+//#include <semaphore.h>
 
 #define MAX_STRING_SIZE 512
+#define NOFD -1
+
 int nsecs, fd;
 char * fifoname;
-sem_t empty;
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
@@ -30,22 +31,18 @@ void *receiveRequest(void * args){
     long t, tid;
     enum OPERATION oper;
 
-    
-    int numbers[6];
+    //int numbers[6];
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    oper = RECVD;
-    logOperation(i, getpid(), pthread_self(), dur, pl, oper, STDOUT_FILENO);
+    logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, 1, STDOUT_FILENO);
 
-    sprintf(private_fifoname, "/tmp/%d.%ld", pid, tid);
+    sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
 
     while((privatefd = open(private_fifoname, O_WRONLY)) <= 0) sleep(1);
 
-    oper = ENTER;
     static int count = 0;
-    string = logOperation(i, getpid(), pthread_self(), dur, count, oper, privatefd);
+    logOperation(i, getpid(), pthread_self(), dur, count, ENTER, 2, STDOUT_FILENO, privatefd);
     count++;
-    printf("%s", string);
 
     return NULL;
 }
@@ -57,8 +54,6 @@ int main(int argc, char ** argv) {
     
     mkfifo(fifoname, 0660);
     fd = open(fifoname, O_RDONLY, 0644);
-
-    sem_init(&empty, 0, 1);
 
     int count = 0;
     while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
