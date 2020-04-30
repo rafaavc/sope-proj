@@ -43,11 +43,18 @@ void waitResponse(int privatefd){
     }
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    if (oper == ENTER) logOperation(i, pid, tid, dur, pl, IAMIN, 1, STDOUT_FILENO);
-
-    if (oper == TLATE){
-        bathroomOpen = false;
-        logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, 1, STDOUT_FILENO);
+    
+    switch(oper) {
+        case ENTER:
+            logOperation(i, pid, tid, dur, pl, IAMIN, 1, STDOUT_FILENO);
+            break;
+        case TLATE:
+            bathroomOpen = false;
+            logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, 1, STDOUT_FILENO);
+            break;
+        
+        default:
+            break;
     }
 
     free(string);
@@ -58,7 +65,7 @@ void * sendRequest(void *args){
     int n = *(int *) args;
     int fd;
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
-    int dur = rand() % 2000;
+    int dur = 20 + rand() % 20;
 
     if((fd = open(fifoname, O_WRONLY)) == -1){
         logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, 1, STDOUT_FILENO);
@@ -97,8 +104,8 @@ int main(int argc, char ** argv) {
     while(bathroomOpen && (clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
         pthread_create(&thread, NULL, sendRequest, (void *) &count);
-        unsigned msInterval = 80 + rand()%80;
-        usleep(msInterval*1000); // sleeps a random number of milliseconds (from 80 to 160)
+        unsigned msInterval = 100 + rand()%80;
+        usleep(msInterval*1000); // sleeps a random number of milliseconds (from 100 to 180)
         count++;
     }
 
