@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <errno.h>
 
 #define MAX_STRING_SIZE 512
 int nsecs;
@@ -24,23 +25,22 @@ void setArgs(int argc, char ** argv) {
 }
 
 
-void waitResponse(){
-    int privatefd; //, numbers[6];
-    char *private_fifoname = malloc(MAX_STRING_SIZE);
-    sprintf(private_fifoname, "/tmp/%d.%ld", getpid(), pthread_self());
-    mkfifo(private_fifoname, 0644);
-
-    if ((privatefd = open(private_fifoname, O_RDONLY)) <= 0){
-        printf("Error opening private fifo");
-        exit(1);
-    }
-
+void waitResponse(int privatefd){
     char *string = malloc(MAX_STRING_SIZE);
     int i, pid, dur, pl;
     long t, tid;
     enum OPERATION oper;
 
-    read(privatefd, string, MAX_STRING_SIZE);
+    int n;
+
+    while((n = read(privatefd, string, MAX_STRING_SIZE)) <= 0 /*&& timeElapsed < nsecs*/) {
+        if (n == -1) {
+            if (errno != EAGAIN) {
+                perror("Error reading from private fifo");
+                return;
+            }
+        }
+    }
 
     receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
     if (oper == ENTER) logOperation(i, pid, tid, dur, pl, IAMIN, 1, STDOUT_FILENO);
@@ -50,11 +50,7 @@ void waitResponse(){
         logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, 1, STDOUT_FILENO);
     }
 
-    close(privatefd);
-    unlink(private_fifoname);
-
     free(string);
-    free(private_fifoname);
 }
 
 void * sendRequest(void *args){
@@ -64,17 +60,30 @@ void * sendRequest(void *args){
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
     int dur = rand() % 2000;
 
-    if((fd = open(fifoname, O_WRONLY)) <= 0){
+    if((fd = open(fifoname, O_WRONLY)) == -1){
         logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, 1, STDOUT_FILENO);
-        return NULL;
+        pthread_exit(NULL);
+    }
+
+    int privatefd;
+    char *private_fifoname = malloc(MAX_STRING_SIZE);
+    sprintf(private_fifoname, "/tmp/%d.%ld", getpid(), pthread_self());
+    mkfifo(private_fifoname, 0660);
+
+    if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1){
+        write(STDOUT_FILENO, "Error opening private fifo", 26);
+        pthread_exit(NULL);
     }
 
     logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, 2, STDOUT_FILENO, fd);
-
-    waitResponse();
-
     close(fd);
-    return NULL;
+
+    waitResponse(privatefd);
+
+    close(privatefd);
+    unlink(private_fifoname);
+    free(private_fifoname);
+    pthread_exit(NULL);
 }
 
 

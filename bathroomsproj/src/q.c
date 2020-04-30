@@ -9,6 +9,7 @@
 #include <string.h>
 //#include <semaphore.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #define MAX_STRING_SIZE 512
 #define NOFD -1
@@ -48,13 +49,13 @@ void *receiveRequest(void * args){
 
     if ((privatefd = open(private_fifoname, O_WRONLY)) <= 0){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, 1, STDOUT_FILENO);
-        return NULL;
+        pthread_exit(NULL);
     }
 
 
     if (!bathroomOpen){
         logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, 2, STDOUT_FILENO, privatefd);
-        return NULL;
+        pthread_exit(NULL);
     }
 
     pthread_mutex_lock(&mut);
@@ -62,11 +63,11 @@ void *receiveRequest(void * args){
     placesCount++;
     pthread_mutex_unlock(&mut);
 
-    usleep(dur);
+    usleep(dur*1000);
 
     logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, 1, STDOUT_FILENO);
 
-    return NULL;
+    pthread_exit(NULL);
 }
 
 int main(int argc, char ** argv) {
@@ -74,16 +75,32 @@ int main(int argc, char ** argv) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
-    mkfifo(fifoname, 0660);
-    fd = open(fifoname, O_RDONLY, 0644);
+    if (mkfifo(fifoname, 0660) == -1) {
+        perror("Error creating public fifo");
+        pthread_exit(NULL);
+    }
+
+    if ((fd = open(fifoname, O_RDONLY | O_NONBLOCK)) == -1) {
+        perror("Error opening public fifo");
+        pthread_exit(NULL);
+    }
 
     while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
         pthread_t thread;
         char *string = malloc(MAX_STRING_SIZE);
-        if (read(fd, string, MAX_STRING_SIZE) > 0){
+        int n;
+        if ((n = read(fd, string, MAX_STRING_SIZE)) > 0) {
             pthread_create(&thread, NULL, receiveRequest, (int *) &string[0]);
+        } else if (n == -1) {
+            if (errno != EAGAIN) { // EAGAIN happens when the write end hasn't been opened yet (because of O_NONBLOCK)
+                perror("Error reading public fifo");
+                pthread_exit(NULL);
+            }
+        } else {
+            free(string);
         }
     }
+
     bathroomOpen = false;
 
     close(fd);
