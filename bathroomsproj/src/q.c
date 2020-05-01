@@ -47,11 +47,10 @@ void *receiveRequest(void * args){
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
     }
 
-    if ((privatefd = open(private_fifoname, O_WRONLY)) <= 0){
+    if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, 1, STDOUT_FILENO);
         pthread_exit(NULL);
     }
-
 
     if (!bathroomOpen){
         logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, 2, STDOUT_FILENO, privatefd);
