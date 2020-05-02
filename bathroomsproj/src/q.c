@@ -85,7 +85,7 @@ int main(int argc, char ** argv) {
         pthread_exit(NULL);
     }
 
-    while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
+    while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), (end.tv_sec + (end.tv_nsec/(1000000000.))) - (start.tv_sec + (start.tv_nsec/(1000000000.))) < nsecs) {
         pthread_t thread;
         structOp * op = malloc(sizeof(structOp));
         int n;
