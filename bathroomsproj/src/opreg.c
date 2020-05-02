@@ -44,16 +44,15 @@ void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATI
         write(STDOUT_FILENO, op, strlen(op));
         free(op);
     }
-
-    structOp op;
-    op.i = i;
-    op.pid = pid;
-    op.tid = tid;
-    op.dur = dur;
-    op.oper = oper;
-    op.pl = pl;
-
     if (fd > 0) {
+        structOp op;
+        op.i = i;
+        op.pid = pid;
+        op.tid = tid;
+        op.dur = dur;
+        op.oper = oper;
+        op.pl = pl;
+        
         write(fd, &op, sizeof(structOp));
     }
     

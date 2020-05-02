@@ -46,10 +46,10 @@ void waitResponse(int privatefd){
     
     switch(oper) {
         case ENTER:
-            logOperation(i, pid, tid, dur, pl, IAMIN, true, -1);
+            logOperation(i, pid, tid, dur, pl, IAMIN, true, NOFD);
             break;
         case TLATE:
-            logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, true, -1);
+            logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, true, NOFD);
             break;
         default:
             break;
@@ -66,7 +66,7 @@ void * sendRequest(void *args){
     int dur = 150 + rand() % 150;
 
     if((fd = open(fifoname, O_WRONLY)) == -1){
-        logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, true, -1);
+        logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, true, NOFD);
         pthread_exit(NULL);
     }
 
