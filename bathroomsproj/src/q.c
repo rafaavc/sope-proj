@@ -8,15 +8,18 @@
 #include "opreg.h"
 #include <string.h>
 //#include <semaphore.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <errno.h>
 
 #define MAX_STRING_SIZE 512
 #define NOFD -1
+#define MAX_CLIENTS_PER_USAGE 10
 
 int nsecs, fd;
 char * fifoname;
 bool bathroomOpen = true;
+pid_t signal_pid[MAX_CLIENTS_PER_USAGE] = {0};
 
 int placesCount = 0; // shared vars
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
@@ -29,6 +32,15 @@ void setArgs(int argc, char ** argv) {
     //nplaces = args.nplaces;
 }
 
+bool setPid(pid_t current_pid){
+    int i;
+    for (i = 0; i < MAX_CLIENTS_PER_USAGE; i++){
+        if (signal_pid[i] == current_pid) return false;
+        if (signal_pid[i] == 0) break;
+    }
+    signal_pid[i] = current_pid;
+    return true;
+}
 
 void *receiveRequest(void * args){
     char *private_fifoname = malloc(MAX_STRING_SIZE);
@@ -46,6 +58,8 @@ void *receiveRequest(void * args){
 
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
     }
+
+    setPid(pid);
 
     if ((privatefd = open(private_fifoname, O_WRONLY)) <= 0){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, 1, STDOUT_FILENO);
@@ -100,7 +114,11 @@ int main(int argc, char ** argv) {
             free(string);
         }
     }
-
+    for (int i = 0; i < MAX_CLIENTS_PER_USAGE; i++){
+        if (signal_pid[i] != 0){
+            kill(signal_pid[i], SIGUSR1);
+        }
+    }
     bathroomOpen = false;
 
     close(fd);

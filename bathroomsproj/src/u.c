@@ -17,6 +17,11 @@ int nsecs;
 char * fifoname;
 bool bathroomOpen = true;
 
+void sigint_handler(int sig){
+    if (sig == SIGUSR1){
+        bathroomOpen = false;
+    }
+}
 
 void setArgs(int argc, char ** argv) {
     UArgs args = getCommandLineArgsU(argc, argv);
@@ -67,6 +72,11 @@ void * sendRequest(void *args){
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
     int dur = 20 + rand() % 20;
 
+    if (!bathroomOpen){
+            logOperation(n, getpid(), pthread_self(), dur, -1, CLOSD, 1, STDOUT_FILENO);
+            pthread_exit(NULL);
+    }
+
     if((fd = open(fifoname, O_WRONLY)) == -1){
         logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, 1, STDOUT_FILENO);
         pthread_exit(NULL);
@@ -99,9 +109,17 @@ int main(int argc, char ** argv) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
+    struct sigaction action;
+
+    action.sa_handler = sigint_handler;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+
+    sigaction(SIGUSR1, &action, NULL);
+
     srand(time(NULL));
     int count = 0;
-    while(bathroomOpen && (clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
+    while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
         pthread_create(&thread, NULL, sendRequest, (void *) &count);
         unsigned msInterval = 100 + rand()%80;
