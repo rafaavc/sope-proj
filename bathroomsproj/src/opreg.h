@@ -1,6 +1,8 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#define NOFD -1
+
 enum OPERATION {
     IWANT,  // - cliente faz pedido inicial
     RECVD,  // - servidor acusa receção de pedido

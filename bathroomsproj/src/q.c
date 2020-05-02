@@ -12,7 +12,6 @@
 #include <errno.h>
 
 #define MAX_STRING_SIZE 512
-#define NOFD -1
 
 int nsecs, fd;
 char * fifoname;
@@ -41,7 +40,7 @@ void *receiveRequest(void * args){
     free(op);
 
     if (oper == IWANT) {
-        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, -1);
+        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, NOFD);
 
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
     }
@@ -49,7 +48,7 @@ void *receiveRequest(void * args){
     //sleep(1); // Simulating waiting for spot
 
     if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
-        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, -1);
+        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);
         pthread_exit(NULL);
     }
 
@@ -66,7 +65,7 @@ void *receiveRequest(void * args){
 
     usleep(dur*1000);
 
-    logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, true, -1);
+    logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, true, NOFD);
 
     pthread_exit(NULL);
 }
