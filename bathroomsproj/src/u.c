@@ -65,8 +65,6 @@ void * sendRequest(void *args){
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
     int dur = 150 + rand() % 150;
 
-    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, -1);
-
     if((fd = open(fifoname, O_WRONLY)) == -1){
         logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, true, -1);
         pthread_exit(NULL);
@@ -82,7 +80,7 @@ void * sendRequest(void *args){
         pthread_exit(NULL);
     }
 
-    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, false, fd);
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, fd);
     close(fd);
 
     waitResponse(privatefd);
