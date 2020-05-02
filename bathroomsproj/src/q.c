@@ -54,7 +54,7 @@ void *receiveRequest(void * args){
 
     if (!bathroomOpen){
         sleep(1);
-        logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, true, privatefd);
+        logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd);
         pthread_exit(NULL);
     }
 

@@ -101,7 +101,8 @@ int main(int argc, char ** argv) {
     int count = 0;
     while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
-        pthread_create(&thread, NULL, sendRequest, &count);
+        int n = count;
+        pthread_create(&thread, NULL, sendRequest, &n);
         unsigned msInterval = 2 + rand() % 5;
         usleep(msInterval*1000); // sleeps a random number of milliseconds
         count++;

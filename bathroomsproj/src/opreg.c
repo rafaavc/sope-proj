@@ -38,12 +38,7 @@ na sequência de insucesso de ocupação, por motivo de encerramento)
 
 
 void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, bool writeToSTDOUT, int fd) {
-    if (writeToSTDOUT) {
-        char * op = malloc(MAX_STRING_SIZE);
-        sprintf(op, "%ld ; %d ; %d ; %lu ; %d ; %d ; %s\n", time(NULL), i, pid, tid, dur, pl, opStrings[oper]);
-        write(STDOUT_FILENO, op, strlen(op));
-        free(op);
-    }
+    bool error = false;
     if (fd > 0) {
         structOp op;
         op.i = i;
@@ -53,9 +48,18 @@ void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATI
         op.oper = oper;
         op.pl = pl;
         
-        write(fd, &op, sizeof(structOp));
+        if (write(fd, &op, sizeof(structOp)) < 0){
+            oper = FAILD;
+            error = true;
+        }
     }
-    
+    if (writeToSTDOUT) {
+        char * op = malloc(MAX_STRING_SIZE);
+        sprintf(op, "%ld ; %d ; %d ; %lu ; %d ; %d ; %s\n", time(NULL), i, pid, tid, dur, pl, opStrings[oper]);
+        write(STDOUT_FILENO, op, strlen(op));
+        free(op);
+    }
+    if (error) pthread_exit(NULL);
 }
 
 void receiveLogOperation(structOp *op, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper){
