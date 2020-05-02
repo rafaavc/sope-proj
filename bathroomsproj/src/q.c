@@ -59,13 +59,9 @@ void *receiveRequest(void * args){
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
     }
 
-<<<<<<< HEAD
     setPid(pid);
 
-    if ((privatefd = open(private_fifoname, O_WRONLY)) <= 0){
-=======
     if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
->>>>>>> 3a0127377c8e0560ac8ca91ccbb9ae96e7f8badb
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, 1, STDOUT_FILENO);
         pthread_exit(NULL);
     }
