@@ -46,7 +46,7 @@ void waitResponse(int privatefd){
     
     switch(oper) {
         case ENTER:
-            logOperation(i, pid, tid, dur, pl, IAMIN, true, NOFD);
+            logOperation(i, getpid(), pthread_self(), dur, pl, IAMIN, true, NOFD);
             break;
         case TLATE:
             logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, true, NOFD);
