@@ -57,7 +57,6 @@ void waitResponse(int privatefd){
             bathroomOpen = false;
             logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, 1, STDOUT_FILENO);
             break;
-        
         default:
             break;
     }
@@ -70,7 +69,7 @@ void * sendRequest(void *args){
     int n = *(int *) args;
     int fd;
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
-    int dur = 20 + rand() % 20;
+    int dur = 150 + rand() % 150;
 
     if (!bathroomOpen){
             logOperation(n, getpid(), pthread_self(), dur, -1, CLOSD, 1, STDOUT_FILENO);

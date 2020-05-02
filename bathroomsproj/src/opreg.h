@@ -38,4 +38,4 @@ void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATI
  * @param pl nº de lugar que eventualmente lhe será atribuído no Quarto de Banho 
  * @param oper operação que o processo acabou de executar
  */
-void receiveLogOperation();
+void receiveLogOperation(char *string, long *t, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper);
