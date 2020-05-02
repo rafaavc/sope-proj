@@ -46,12 +46,12 @@ void *receiveRequest(void * args){
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
     }
 
+    //sleep(1); // Simulating waiting for spot
+
     if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, -1);
         pthread_exit(NULL);
     }
-
-    //sleep(1);
 
     if (!bathroomOpen){
         sleep(1);
