@@ -71,9 +71,11 @@ void * sendRequest(void *args){
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
     int dur = 150 + rand() % 150;
 
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, 1, STDOUT_FILENO);
+
     if (!bathroomOpen){
-            logOperation(n, getpid(), pthread_self(), dur, -1, CLOSD, 1, STDOUT_FILENO);
-            pthread_exit(NULL);
+        logOperation(n, getpid(), pthread_self(), dur, -1, CLOSD, 1, STDOUT_FILENO);
+        pthread_exit(NULL);
     }
 
     if((fd = open(fifoname, O_WRONLY)) == -1){
@@ -91,7 +93,7 @@ void * sendRequest(void *args){
         pthread_exit(NULL);
     }
 
-    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, 2, STDOUT_FILENO, fd);
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, 1, fd);
     close(fd);
 
     waitResponse(privatefd);
