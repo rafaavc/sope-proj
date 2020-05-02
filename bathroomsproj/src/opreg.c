@@ -1,6 +1,5 @@
 #include "opreg.h"
 #include <sys/types.h>
-#include <pthread.h>
 #include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,39 +37,33 @@ na sequência de insucesso de ocupação, por motivo de encerramento)
 
 
 
-void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, int n, ...) {
-    char * op = malloc(MAX_STRING_SIZE);
-    sprintf(op, "%ld ; %d ; %d ; %lu ; %d ; %d ; %s\n", time(NULL), i, pid, tid, dur, pl, opStrings[oper]);
-
-    va_list fds;
-    va_start(fds, n);
-    for (int i = 0; i < n; i++) {
-        int fd = va_arg(fds, int);
-        write(fd, op, strlen(op));
+void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, bool writeToSTDOUT, int fd) {
+    if (writeToSTDOUT) {
+        char * op = malloc(MAX_STRING_SIZE);
+        sprintf(op, "%ld ; %d ; %d ; %lu ; %d ; %d ; %s\n", time(NULL), i, pid, tid, dur, pl, opStrings[oper]);
+        write(STDOUT_FILENO, op, strlen(op));
+        free(op);
     }
-    va_end(fds);
-    free(op);
+
+    structOp op;
+    op.i = i;
+    op.pid = pid;
+    op.tid = tid;
+    op.dur = dur;
+    op.oper = oper;
+    op.pl = pl;
+
+    if (fd > 0) {
+        write(fd, &op, sizeof(structOp));
+    }
+    
 }
 
-void receiveLogOperation(char *string, long *t, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper){
-    char * stok = strtok(string, ";");
-
-    *t = atol(stok);
-    stok = strtok(NULL, ";");
-    *i = atoi(stok);
-    stok = strtok(NULL, ";");
-    *pid = atoi(stok);
-    stok = strtok(NULL, ";");
-    *tid = atol(stok);
-    stok = strtok(NULL, ";");
-    *dur = atoi(stok);
-    stok = strtok(NULL, ";");
-    *pl = atoi(stok);
-    stok = strtok(NULL, ";");
-
-    for (int i = 0; i < 9; i++){
-        if (strstr(stok, opStrings[i]) != NULL){
-            *oper = i;
-        }
-    }
+void receiveLogOperation(structOp *op, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper){
+    *i = op->i;
+    *pid = op->pid;
+    *tid = op->tid;
+    *dur = op->dur;
+    *pl = op->pl;
+    *oper = op->oper;
 }

@@ -15,13 +15,7 @@
 #define MAX_STRING_SIZE 512
 int nsecs;
 char * fifoname;
-bool bathroomOpen = true;
 
-void sigint_handler(int sig){
-    if (sig == SIGUSR1){
-        bathroomOpen = false;
-    }
-}
 
 void setArgs(int argc, char ** argv) {
     UArgs args = getCommandLineArgsU(argc, argv);
@@ -31,14 +25,15 @@ void setArgs(int argc, char ** argv) {
 
 
 void waitResponse(int privatefd){
-    char *string = malloc(MAX_STRING_SIZE);
-    int i, pid, dur, pl;
-    long t, tid;
+    structOp *op = malloc(sizeof(structOp));
+    int i, dur, pl;
+    pid_t pid;
+    pthread_t tid;
     enum OPERATION oper;
 
     int n;
 
-    while((n = read(privatefd, string, MAX_STRING_SIZE)) <= 0 /*&& timeElapsed < nsecs*/) {
+    while((n = read(privatefd, op, sizeof(structOp))) <= 0 /*&& timeElapsed < nsecs*/) {
         if (n == -1) {
             if (errno != EAGAIN) {
                 perror("Error reading from private fifo");
@@ -47,21 +42,20 @@ void waitResponse(int privatefd){
         }
     }
 
-    receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
+    receiveLogOperation(op, &i, &pid, &tid, &dur, &pl, &oper);
     
     switch(oper) {
         case ENTER:
-            logOperation(i, pid, tid, dur, pl, IAMIN, 1, STDOUT_FILENO);
+            logOperation(i, pid, tid, dur, pl, IAMIN, true, -1);
             break;
         case TLATE:
-            bathroomOpen = false;
-            logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, 1, STDOUT_FILENO);
+            logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, true, -1);
             break;
         default:
             break;
     }
 
-    free(string);
+    free(op);
 }
 
 void * sendRequest(void *args){
@@ -71,15 +65,10 @@ void * sendRequest(void *args){
     clock_gettime(CLOCK_MONOTONIC_RAW, &t);
     int dur = 150 + rand() % 150;
 
-    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, 1, STDOUT_FILENO);
-
-    if (!bathroomOpen){
-        logOperation(n, getpid(), pthread_self(), dur, -1, CLOSD, 1, STDOUT_FILENO);
-        pthread_exit(NULL);
-    }
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, -1);
 
     if((fd = open(fifoname, O_WRONLY)) == -1){
-        logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, 1, STDOUT_FILENO);
+        logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, true, -1);
         pthread_exit(NULL);
     }
 
@@ -93,7 +82,7 @@ void * sendRequest(void *args){
         pthread_exit(NULL);
     }
 
-    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, 1, fd);
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, false, fd);
     close(fd);
 
     waitResponse(privatefd);
@@ -110,21 +99,21 @@ int main(int argc, char ** argv) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
-    struct sigaction action;
+    /*struct sigaction action;
 
     action.sa_handler = sigint_handler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
 
-    sigaction(SIGUSR1, &action, NULL);
+    sigaction(SIGUSR1, &action, NULL);*/
 
     srand(time(NULL));
     int count = 0;
     while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
         pthread_create(&thread, NULL, sendRequest, (void *) &count);
-        unsigned msInterval = 100 + rand()%80;
-        usleep(msInterval*1000); // sleeps a random number of milliseconds (from 100 to 180)
+        unsigned msInterval = 100 + rand()%100;
+        usleep(msInterval*1000); // sleeps a random number of milliseconds
         count++;
     }
 

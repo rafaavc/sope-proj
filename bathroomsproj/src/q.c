@@ -7,19 +7,16 @@
 #include "cmdargs.h"
 #include "opreg.h"
 #include <string.h>
-//#include <semaphore.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <errno.h>
 
 #define MAX_STRING_SIZE 512
 #define NOFD -1
-#define MAX_CLIENTS_PER_USAGE 10
 
 int nsecs, fd;
 char * fifoname;
 bool bathroomOpen = true;
-pid_t signal_pid[MAX_CLIENTS_PER_USAGE] = {0};
 
 int placesCount = 0; // shared vars
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
@@ -32,53 +29,46 @@ void setArgs(int argc, char ** argv) {
     //nplaces = args.nplaces;
 }
 
-bool setPid(pid_t current_pid){
-    int i;
-    for (i = 0; i < MAX_CLIENTS_PER_USAGE; i++){
-        if (signal_pid[i] == current_pid) return false;
-        if (signal_pid[i] == 0) break;
-    }
-    signal_pid[i] = current_pid;
-    return true;
-}
-
 void *receiveRequest(void * args){
     char *private_fifoname = malloc(MAX_STRING_SIZE);
-    char *string = (char *)args;
-    int i, pid, dur, pl, privatefd;
-    long t, tid;
+    structOp *op = (structOp *) args;
+    int i, dur, pl, privatefd;
+    pid_t pid;
+    pthread_t tid;
     enum OPERATION oper;
 
     //int numbers[6];
 
-    receiveLogOperation(&string[0], &t, &i, &pid, &tid, &dur, &pl, &oper);
-    
+    receiveLogOperation(op, &i, &pid, &tid, &dur, &pl, &oper);
+    free(op);
+
     if (oper == IWANT) {
-        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, 1, STDOUT_FILENO);
+        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, -1);
 
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
     }
 
-    setPid(pid);
-
     if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
-        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, 1, STDOUT_FILENO);
+        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, -1);
         pthread_exit(NULL);
     }
 
+    //sleep(1);
+
     if (!bathroomOpen){
-        logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, 2, STDOUT_FILENO, privatefd);
+        sleep(1);
+        logOperation(i, getpid(), pthread_self(), dur, pl, TLATE, true, privatefd);
         pthread_exit(NULL);
     }
 
     pthread_mutex_lock(&mut);
-    logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, 2, STDOUT_FILENO, privatefd);
+    logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, true, privatefd);
     placesCount++;
     pthread_mutex_unlock(&mut);
 
     usleep(dur*1000);
 
-    logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, 1, STDOUT_FILENO);
+    logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, true, -1);
 
     pthread_exit(NULL);
 }
@@ -100,24 +90,24 @@ int main(int argc, char ** argv) {
 
     while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs) {
         pthread_t thread;
-        char *string = malloc(MAX_STRING_SIZE);
+        structOp * op = malloc(sizeof(structOp));
         int n;
-        if ((n = read(fd, string, MAX_STRING_SIZE)) > 0) {
-            pthread_create(&thread, NULL, receiveRequest, (int *) &string[0]);
+        if ((n = read(fd, op, sizeof(structOp))) > 0) {
+            pthread_create(&thread, NULL, receiveRequest, op);
         } else if (n == -1) {
             if (errno != EAGAIN) { // EAGAIN happens when the write end hasn't been opened yet (because of O_NONBLOCK)
                 perror("Error reading public fifo");
                 pthread_exit(NULL);
             }
         } else {
-            free(string);
+            free(op);
         }
     }
-    for (int i = 0; i < MAX_CLIENTS_PER_USAGE; i++){
+    /*for (int i = 0; i < MAX_CLIENTS_PER_USAGE; i++){
         if (signal_pid[i] != 0){
-            kill(signal_pid[i], SIGUSR1);
+            //kill(signal_pid[i], SIGUSR1);
         }
-    }
+    }*/
     bathroomOpen = false;
 
     close(fd);

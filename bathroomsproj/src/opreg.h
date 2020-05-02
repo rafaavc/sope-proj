@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <stdbool.h>
 
 enum OPERATION {
     IWANT,  // - cliente faz pedido inicial
@@ -12,6 +13,14 @@ enum OPERATION {
     GAVUP,  // - servidor já não consegue responder a pedido porque FIFO privado do cliente fechou
 };
 
+struct op_struct {
+    pid_t pid;
+    pthread_t tid;
+    int i, dur, pl;
+    enum OPERATION oper;
+};
+typedef struct op_struct structOp;
+
 /**
  * @brief Log operations to fd
  * 
@@ -21,16 +30,16 @@ enum OPERATION {
  * @param dur duração, em milissegundos, de utilização do Quarto de Banho
  * @param pl nº de lugar que eventualmente lhe será atribuído no Quarto de Banho 
  * @param oper operação que o processo acabou de executar
- * @param n number of file descriptors
+ * @param writeToSTDOUT whether to write the operation to stdout
+ * @param fd fd of where to write the structOp
  * 
  */
-void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, int n, ...);
+void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATION oper, bool writeToSTDOUT, int fd);
 
 /**
  * @brief Separete log parameters
  * 
- * @param string string from logOperation
- * @param t time
+ * @param string pointer to the structOp
  * @param i número sequencial do pedido
  * @param pid identificador de sistema do processo
  * @param tid identificador no sistema do thread
@@ -38,4 +47,4 @@ void logOperation(int i, pid_t pid, pthread_t tid, int dur, int pl, enum OPERATI
  * @param pl nº de lugar que eventualmente lhe será atribuído no Quarto de Banho 
  * @param oper operação que o processo acabou de executar
  */
-void receiveLogOperation(char *string, long *t, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper);
+void receiveLogOperation(structOp *op, int *i, pid_t *pid, pthread_t *tid, int *dur, int *pl , enum OPERATION *oper);
