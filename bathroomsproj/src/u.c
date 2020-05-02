@@ -99,20 +99,12 @@ int main(int argc, char ** argv) {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
-    /*struct sigaction action;
-
-    action.sa_handler = sigint_handler;
-    sigemptyset(&action.sa_mask);
-    action.sa_flags = 0;
-
-    sigaction(SIGUSR1, &action, NULL);*/
-
     srand(time(NULL));
     int count = 0;
     while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), end.tv_sec - start.tv_sec < nsecs)) {
         pthread_t thread;
-        pthread_create(&thread, NULL, sendRequest, (void *) &count);
-        unsigned msInterval = 100 + rand()%100;
+        pthread_create(&thread, NULL, sendRequest, &count);
+        unsigned msInterval = 0;
         usleep(msInterval*1000); // sleeps a random number of milliseconds
         count++;
     }

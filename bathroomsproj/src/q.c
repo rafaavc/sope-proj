@@ -37,8 +37,6 @@ void *receiveRequest(void * args){
     pthread_t tid;
     enum OPERATION oper;
 
-    //int numbers[6];
-
     receiveLogOperation(op, &i, &pid, &tid, &dur, &pl, &oper);
     free(op);
 
@@ -103,11 +101,6 @@ int main(int argc, char ** argv) {
             free(op);
         }
     }
-    /*for (int i = 0; i < MAX_CLIENTS_PER_USAGE; i++){
-        if (signal_pid[i] != 0){
-            //kill(signal_pid[i], SIGUSR1);
-        }
-    }*/
     bathroomOpen = false;
 
     close(fd);
