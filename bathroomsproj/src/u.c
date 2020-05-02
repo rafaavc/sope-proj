@@ -107,7 +107,7 @@ int main(int argc, char ** argv) {
         usleep(msInterval*1000); // sleeps a random number of milliseconds
         count++;
     }
-
+    
     pthread_exit(EXIT_SUCCESS);
 }
 

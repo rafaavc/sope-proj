@@ -51,6 +51,7 @@ void *receiveRequest(void * args){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);
         pthread_exit(NULL);
     }
+    free(private_fifoname);
 
     if (!bathroomOpen){
         sleep(1);
