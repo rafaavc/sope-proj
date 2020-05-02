@@ -45,7 +45,7 @@ void *receiveRequest(void * args){
         sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
     }
 
-    //sleep(1); // Simulating waiting for spot
+    //usleep((500 + rand()%1000)*1000); // Simulating waiting for spot
 
     if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);

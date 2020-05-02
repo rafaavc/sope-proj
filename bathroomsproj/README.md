@@ -20,7 +20,7 @@ sendo fifoname o nome da fifo pública utilizada
 - [x] FAILD - cliente já não consegue receber resposta do servidor
 - [x] GAVUP - servidor já não consegue responder a pedido porque FIFO privado do cliente fechou
 
-Nota: nesta primeira fase é um pouco difícil testar as operações 2LATE e CLOSD. Para facilitar é possível descomentar a linha 48 do ficheiro 'q.c', que simula um tempo de espera de 1 segundo por cliente.
+Nota: nesta primeira fase é um pouco difícil testar as operações 2LATE e CLOSD. Para facilitar é possível descomentar a linha 48 do ficheiro 'q.c', que simula um tempo de espera entre 0.5 e 1.5 segundos por cliente.
 
 
 ### Detalhes
