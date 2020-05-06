@@ -68,6 +68,7 @@ void *receiveRequest(void * args){
 
     logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, true, NOFD);
 
+    close(privatefd);
     pthread_exit(NULL);
 }
 

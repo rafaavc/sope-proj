@@ -59,10 +59,8 @@ void waitResponse(int privatefd){
 }
 
 void * sendRequest(void *args){
-    struct timespec t;
     int n = *(int *) args;
     int fd;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &t);
     int dur = 150 + rand() % 150;
 
     if((fd = open(fifoname, O_WRONLY)) == -1){
@@ -72,8 +70,11 @@ void * sendRequest(void *args){
 
     int privatefd;
     char *private_fifoname = malloc(MAX_STRING_SIZE);
-    sprintf(private_fifoname, "/tmp/%d.%ld", getpid(), pthread_self());
-    mkfifo(private_fifoname, 0660);
+    sprintf(private_fifoname, "/tmp/%d.%lu", getpid(), pthread_self());
+    if (mkfifo(private_fifoname, 0660) == -1) {
+        write(STDOUT_FILENO, "Error making fifo", 17);
+        pthread_exit(NULL);
+    }
 
     if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1){
         write(STDOUT_FILENO, "Error opening private fifo", 26);
