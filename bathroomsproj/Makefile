@@ -4,8 +4,8 @@ _ServerOBJ = q.o cmdargs.o opreg.o
 _ClientOBJ = u.o cmdargs.o opreg.o
 OBJDIR = obj
 SRCDIR = src
-ServerNAME = Q1
-ClientNAME = U1
+ServerNAME = Q2
+ClientNAME = U2
 CFLAGS = -Wall -pthread -lrt #-lm
 
 ServerOBJ = $(patsubst %,$(OBJDIR)/%,$(_ServerOBJ))

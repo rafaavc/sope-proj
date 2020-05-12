@@ -16,17 +16,9 @@
 int nsecs, fd, nthreads = -1, nplaces = -1;
 char * fifoname;
 bool bathroomOpen = true;
-bool *bathroom;
 
-int placesCount = 0; // shared vars
+int placesCount = 0; bool * bathrooms; // shared vars; bathrooms: position 0 -> bathroom 1, position 1 -> bathroom 2 [...]
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
-
-int checkEmptyBathroom(){
-    for (int i = 0; i < 10; i++){
-        if (bathroom[i] == false) return i;
-    }
-    return -1;
-}
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
@@ -34,11 +26,45 @@ void setArgs(int argc, char ** argv) {
     fifoname = args.fifoname;
     nthreads = args.nthreads;
     nplaces = args.nplaces;
+    if (nplaces != -1) {
+        bathrooms = malloc(sizeof(bool)*nplaces);
+        for (int i = 0; i < nplaces; i++) bathrooms[i] = false;
+    }
 }
 
-void *receiveRequest(void * args){
-    char *private_fifoname = malloc(MAX_STRING_SIZE);
-    structOp *op = (structOp *) args;
+int openClientFIFO(pid_t pid, pthread_t tid, int i, int dur, int pl) {
+    int privatefd;
+    char * private_fifoname = malloc(MAX_STRING_SIZE);
+
+    sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
+
+    if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
+        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);
+        pthread_exit(NULL);
+    }
+
+    free(private_fifoname);
+    return privatefd;
+}
+
+int getBathroomSpot() {
+    if (nplaces == -1) return placesCount++;
+    else {
+        for (int i = 0; i < nplaces; i++){
+            if (bathrooms[i] == false) return i;
+        }
+    }
+    return -1;
+}
+
+void freeSpot(int spot) {
+    pthread_mutex_lock(&mut);
+    bathrooms[spot] = false;
+    pthread_mutex_unlock(&mut);
+}
+
+void * receiveRequest(void * args){
+    structOp * op = (structOp *) args;
     int i, dur, pl, privatefd;
     pid_t pid;
     pthread_t tid;
@@ -47,43 +73,36 @@ void *receiveRequest(void * args){
     receiveLogOperation(op, &i, &pid, &tid, &dur, &pl, &oper);
     free(op);
 
-    if (oper == IWANT) {
-        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, NOFD);
-
-        sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
-    }
-
-    //usleep((500 + rand()%1000)*1000); // Simulating waiting for spot
-
-    if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
-        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);
+    if (oper != IWANT) {
+        write(STDERR_FILENO, "Unknown operation\n", 18);
         pthread_exit(NULL);
     }
-    free(private_fifoname);
 
-    int n;
-    while(true){
+    logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, NOFD); // logs reception of operation
+
+    privatefd = openClientFIFO(pid, tid, i, dur, pl); // opens the client fifo to send the response to
+
+    int spot;
+    while(1){
         if (!bathroomOpen){
-            logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd);
+            logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
             close(privatefd);
             pthread_exit(NULL);
         }
-
         pthread_mutex_lock(&mut);
-        if ((n = checkEmptyBathroom()) >= 0) break;
+        if ((spot = getBathroomSpot()) != -1) break;
         pthread_mutex_unlock(&mut);
-
     }
-
-    bathroom[n] = true;
-    logOperation(i, getpid(), pthread_self(), dur, n, ENTER, true, privatefd);
-    placesCount++;
-
+    if (nplaces != -1) bathrooms[spot] = true;
     pthread_mutex_unlock(&mut);
+    
+    logOperation(i, getpid(), pthread_self(), dur, spot, ENTER, true, privatefd); // sends response to client
 
-    usleep(dur*1000);
-    bathroom[n] = false;
-    logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, true, NOFD);
+    usleep(dur*1000); // Duration of the bathroom usage
+
+    logOperation(i, getpid(), pthread_self(), dur, spot, TIMUP, true, NOFD); // logs the end of the bathroom usage
+
+    if (nplaces != -1) freeSpot(spot); // in case of limited spots, frees the spot
 
     close(privatefd);
     pthread_exit(NULL);
@@ -93,12 +112,6 @@ int main(int argc, char ** argv) {
     setArgs(argc, argv);
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-
-    if (nplaces == -1){
-        printf("nplaces is required\n");
-        exit(EXIT_FAILURE);
-    }
-    bathroom = calloc(nplaces, sizeof(bool));
     
     if (mkfifo(fifoname, 0660) == -1) {
         perror("Error creating public fifo");
@@ -127,6 +140,7 @@ int main(int argc, char ** argv) {
     }
     bathroomOpen = false;
 
+    free(bathrooms);
     close(fd);
     unlink(fifoname);
     pthread_exit(EXIT_SUCCESS);
