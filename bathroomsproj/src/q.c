@@ -13,11 +13,11 @@
 
 #define MAX_STRING_SIZE 512
 
-int nsecs, fd, nthreads = -1, nplaces = -1;
+int nsecs, fd, nthreads, nplaces;
 char * fifoname;
 bool bathroomOpen = true;
 
-int placesCount = 0; bool * bathrooms; // shared vars; bathrooms: position 0 -> bathroom 1, position 1 -> bathroom 2 [...]
+int placesCount = 0; bool * bathrooms; // shared vars
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 void setArgs(int argc, char ** argv) {
@@ -48,8 +48,9 @@ int openClientFIFO(pid_t pid, pthread_t tid, int i, int dur, int pl) {
 }
 
 int getBathroomSpot() {
-    if (nplaces == -1) return placesCount++;
-    else {
+    if (nplaces == -1) {
+        placesCount++;
+    } else {
         for (int i = 0; i < nplaces; i++){
             if (bathrooms[i] == false) return i;
         }
@@ -61,6 +62,24 @@ void freeSpot(int spot) {
     pthread_mutex_lock(&mut);
     bathrooms[spot] = false;
     pthread_mutex_unlock(&mut);
+}
+
+int waitForBathroomSpot(int i, int pl, int privatefd) {
+    int spot;
+    while(1){
+        if (!bathroomOpen){
+            logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
+            close(privatefd);
+            pthread_exit(NULL);
+        }
+        pthread_mutex_lock(&mut);
+        if ((spot = getBathroomSpot()) != -1) break;
+        pthread_mutex_unlock(&mut);
+    }
+    if (nplaces != -1) bathrooms[spot] = true;
+    pthread_mutex_unlock(&mut);
+
+    return spot;
 }
 
 void * receiveRequest(void * args){
@@ -83,18 +102,7 @@ void * receiveRequest(void * args){
     privatefd = openClientFIFO(pid, tid, i, dur, pl); // opens the client fifo to send the response to
 
     int spot;
-    while(1){
-        if (!bathroomOpen){
-            logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
-            close(privatefd);
-            pthread_exit(NULL);
-        }
-        pthread_mutex_lock(&mut);
-        if ((spot = getBathroomSpot()) != -1) break;
-        pthread_mutex_unlock(&mut);
-    }
-    if (nplaces != -1) bathrooms[spot] = true;
-    pthread_mutex_unlock(&mut);
+    spot = waitForBathroomSpot(i, pl, privatefd); // waits for the bathroom spot
     
     logOperation(i, getpid(), pthread_self(), dur, spot, ENTER, true, privatefd); // sends response to client
 
