@@ -13,24 +13,64 @@
 
 #define MAX_STRING_SIZE 512
 
-int nsecs, fd;
+int nsecs, fd, nplaces, nthreads;
 char * fifoname;
 bool bathroomOpen = true;
 
-int placesCount = 0; // shared vars
+int placesCount = 0; bool * bathrooms; // shared vars; bathrooms: position 0 -> bathroom 1, position 1 -> bathroom 2 [...]
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
     nsecs = args.nsecs;
     fifoname = args.fifoname;
-    //nthreads = args.nthreads;
-    //nplaces = args.nplaces;
+    nthreads = args.nthreads;
+    nplaces = args.nplaces;
+    if (nplaces != -1) {
+        bathrooms = malloc(sizeof(bool)*nplaces);
+        for (int i = 0; i < nplaces; i++) bathrooms[i] = false;
+    }
 }
 
-void *receiveRequest(void * args){
-    char *private_fifoname = malloc(MAX_STRING_SIZE);
-    structOp *op = (structOp *) args;
+int openClientFD(pid_t pid, pthread_t tid, int i, int dur, int pl) {
+    int privatefd;
+    char * private_fifoname = malloc(MAX_STRING_SIZE);
+
+    sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
+
+    if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
+        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);
+        pthread_exit(NULL);
+    }
+
+    free(private_fifoname);
+    return privatefd;
+}
+
+int getBathroomSpot() {
+    int spot;
+    if (!bathroomOpen){
+        return -1;
+    }
+    if (nplaces == -1) { // unlimited places
+        pthread_mutex_lock(&mut);
+        spot = placesCount;
+        placesCount++;
+        pthread_mutex_unlock(&mut);
+    } else {
+        return -1;
+    }
+    return spot;
+}
+
+void freeSpot(int spot) {
+    pthread_mutex_lock(&mut);
+    bathrooms[spot] = false;
+    pthread_mutex_unlock(&mut);
+}
+
+void * receiveRequest(void * args){
+    structOp * op = (structOp *) args;
     int i, dur, pl, privatefd;
     pid_t pid;
     pthread_t tid;
@@ -39,34 +79,28 @@ void *receiveRequest(void * args){
     receiveLogOperation(op, &i, &pid, &tid, &dur, &pl, &oper);
     free(op);
 
-    if (oper == IWANT) {
-        logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, NOFD);
-
-        sprintf(private_fifoname, "/tmp/%d.%lu", pid, tid);
-    }
-
-    //usleep((500 + rand()%1000)*1000); // Simulating waiting for spot
-
-    if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
-        logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);
-        pthread_exit(NULL);
-    }
-    free(private_fifoname);
-
-    if (!bathroomOpen){
-        sleep(1);
-        logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd);
+    if (oper != IWANT) {
+        write(STDERR_FILENO, "Unknown operation\n", 18);
         pthread_exit(NULL);
     }
 
-    pthread_mutex_lock(&mut);
-    logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, true, privatefd);
-    placesCount++;
-    pthread_mutex_unlock(&mut);
+    logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, NOFD); // logs reception of operation
 
-    usleep(dur*1000);
+    privatefd = openClientFD(pid, tid, i, dur, pl); // opens the client fifo to send the response to
 
-    logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, true, NOFD);
+    int spot;
+    if ((spot = getBathroomSpot()) == -1){  // gets a bathroom spot; if the bathroom is closed or closes while waiting returns -1
+        logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
+        pthread_exit(NULL);
+    }
+
+    logOperation(i, getpid(), pthread_self(), dur, spot, ENTER, true, privatefd); // sends response to client
+
+    usleep(dur*1000); // Duration of the bathroom usage
+
+    logOperation(i, getpid(), pthread_self(), dur, spot, TIMUP, true, NOFD); // logs the end of the bathroom usage
+
+    if (nplaces != -1) freeSpot(spot); // in case of limited spots, frees the spot
 
     close(privatefd);
     pthread_exit(NULL);
@@ -104,6 +138,7 @@ int main(int argc, char ** argv) {
     }
     bathroomOpen = false;
 
+    free(bathrooms);
     close(fd);
     unlink(fifoname);
     pthread_exit(EXIT_SUCCESS);
