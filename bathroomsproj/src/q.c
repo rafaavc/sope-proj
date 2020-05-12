@@ -13,19 +13,27 @@
 
 #define MAX_STRING_SIZE 512
 
-int nsecs, fd;
+int nsecs, fd, nthreads = -1, nplaces = -1;
 char * fifoname;
 bool bathroomOpen = true;
+bool *bathroom;
 
 int placesCount = 0; // shared vars
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+
+int checkEmptyBathroom(){
+    for (int i = 0; i < 10; i++){
+        if (bathroom[i] == false) return i;
+    }
+    return -1;
+}
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
     nsecs = args.nsecs;
     fifoname = args.fifoname;
-    //nthreads = args.nthreads;
-    //nplaces = args.nplaces;
+    nthreads = args.nthreads;
+    nplaces = args.nplaces;
 }
 
 void *receiveRequest(void * args){
@@ -53,19 +61,28 @@ void *receiveRequest(void * args){
     }
     free(private_fifoname);
 
-    if (!bathroomOpen){
-        sleep(1);
-        logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd);
-        pthread_exit(NULL);
+    int n;
+    while(true){
+        if (!bathroomOpen){
+            logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd);
+            close(privatefd);
+            pthread_exit(NULL);
+        }
+
+        pthread_mutex_lock(&mut);
+        if ((n = checkEmptyBathroom()) >= 0) break;
+        pthread_mutex_unlock(&mut);
+
     }
 
-    pthread_mutex_lock(&mut);
-    logOperation(i, getpid(), pthread_self(), dur, placesCount, ENTER, true, privatefd);
+    bathroom[n] = true;
+    logOperation(i, getpid(), pthread_self(), dur, n, ENTER, true, privatefd);
     placesCount++;
+
     pthread_mutex_unlock(&mut);
 
     usleep(dur*1000);
-
+    bathroom[n] = false;
     logOperation(i, getpid(), pthread_self(), dur, pl, TIMUP, true, NOFD);
 
     close(privatefd);
@@ -76,6 +93,12 @@ int main(int argc, char ** argv) {
     setArgs(argc, argv);
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+
+    if (nplaces == -1){
+        printf("nplaces is required\n");
+        exit(EXIT_FAILURE);
+    }
+    bathroom = calloc(nplaces, sizeof(bool));
     
     if (mkfifo(fifoname, 0660) == -1) {
         perror("Error creating public fifo");

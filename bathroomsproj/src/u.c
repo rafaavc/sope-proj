@@ -15,6 +15,7 @@
 #define MAX_STRING_SIZE 512
 int nsecs;
 char * fifoname;
+bool bathroomOpen = true;
 
 
 void setArgs(int argc, char ** argv) {
@@ -50,6 +51,7 @@ void waitResponse(int privatefd){
             break;
         case TLATE:
             logOperation(i, getpid(), pthread_self(), dur, pl, CLOSD, true, NOFD);
+            bathroomOpen = false;
             break;
         default:
             break;
@@ -100,7 +102,7 @@ int main(int argc, char ** argv) {
 
     srand(time(NULL));
     int count = 0;
-    while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), (end.tv_sec + (end.tv_nsec/(1000000000.))) - (start.tv_sec + (start.tv_nsec/(1000000000.))) < nsecs)) {
+    while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), (end.tv_sec + (end.tv_nsec/(1000000000.))) - (start.tv_sec + (start.tv_nsec/(1000000000.))) < nsecs && bathroomOpen)) {
         pthread_t thread;
         int n = count;
         pthread_create(&thread, NULL, sendRequest, &n);
