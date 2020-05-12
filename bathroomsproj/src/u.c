@@ -23,7 +23,6 @@ void setArgs(int argc, char ** argv) {
     fifoname = args.fifoname;
 }
 
-
 void waitResponse(int privatefd){
     structOp *op = malloc(sizeof(structOp));
     int i, dur, pl;
@@ -58,28 +57,39 @@ void waitResponse(int privatefd){
     free(op);
 }
 
+int createAndOpenPrivateFIFO(char * private_fifoname) {
+    int privatefd;
+    sprintf(private_fifoname, "/tmp/%d.%lu", getpid(), pthread_self());
+    if (mkfifo(private_fifoname, 0660) == -1) {
+        write(STDERR_FILENO, "Error making fifo", 17);
+        pthread_exit(NULL);
+    }
+
+    if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1){
+        write(STDERR_FILENO, "Error opening private fifo", 26);
+        pthread_exit(NULL);
+    }
+    return privatefd;
+}
+
+int openServerFIFO(int n, int dur) {
+    int fd;
+    if((fd = open(fifoname, O_WRONLY)) == -1){
+        logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, true, NOFD);
+        pthread_exit(NULL);
+    }
+    return fd;
+}
+
 void * sendRequest(void *args){
     int n = *(int *) args;
     int fd;
     int dur = 150 + rand() % 150;
 
-    if((fd = open(fifoname, O_WRONLY)) == -1){
-        logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, true, NOFD);
-        pthread_exit(NULL);
-    }
+    fd = openServerFIFO(n, dur);
 
-    int privatefd;
-    char *private_fifoname = malloc(MAX_STRING_SIZE);
-    sprintf(private_fifoname, "/tmp/%d.%lu", getpid(), pthread_self());
-    if (mkfifo(private_fifoname, 0660) == -1) {
-        write(STDOUT_FILENO, "Error making fifo", 17);
-        pthread_exit(NULL);
-    }
-
-    if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1){
-        write(STDOUT_FILENO, "Error opening private fifo", 26);
-        pthread_exit(NULL);
-    }
+    char * private_fifoname = malloc(MAX_STRING_SIZE);
+    int privatefd = createAndOpenPrivateFIFO(private_fifoname);
 
     logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, fd);
     close(fd);

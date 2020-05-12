@@ -32,7 +32,7 @@ void setArgs(int argc, char ** argv) {
     }
 }
 
-int openClientFD(pid_t pid, pthread_t tid, int i, int dur, int pl) {
+int openClientFIFO(pid_t pid, pthread_t tid, int i, int dur, int pl) {
     int privatefd;
     char * private_fifoname = malloc(MAX_STRING_SIZE);
 
@@ -86,7 +86,7 @@ void * receiveRequest(void * args){
 
     logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, NOFD); // logs reception of operation
 
-    privatefd = openClientFD(pid, tid, i, dur, pl); // opens the client fifo to send the response to
+    privatefd = openClientFIFO(pid, tid, i, dur, pl); // opens the client fifo to send the response to
 
     int spot;
     if ((spot = getBathroomSpot()) == -1){  // gets a bathroom spot; if the bathroom is closed or closes while waiting returns -1
