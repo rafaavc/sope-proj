@@ -48,9 +48,8 @@ int openClientFIFO(pid_t pid, pthread_t tid, int i, int dur, int pl) {
 }
 
 int getBathroomSpot() {
-    if (nplaces == -1) {
-        placesCount++;
-    } else {
+    if (nplaces == -1) placesCount++;
+    else {
         for (int i = 0; i < nplaces; i++){
             if (bathrooms[i] == false) return i;
         }
