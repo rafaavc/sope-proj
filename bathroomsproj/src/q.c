@@ -85,7 +85,6 @@ void closeBathroom() {
 
 void sig_handler(int signo) {
     if (signo == SIGALRM) {
-        printf("test\n");
         closeBathroom();
     }
 }
