@@ -2,9 +2,12 @@
 2º Projeto para a Unidade Curricular SOPE @ FEUP 2019-2020
 
 Uso:
+
 make
-./Q1 -t nsecs fifoname, sendo nsecs o número de segundos que a casa de banho está aberta
-./U1 -t nsecs fifoname, sendo nsecs o número de segundos durante os quais se geram clientes
+
+./Q2 -t nsecs fifoname [-l nplaces] [-n nthreads], sendo nsecs o número de segundos que a casa de banho está aberta, nplaces o número de casas de banho e nthreads o número máximo de threads em simultâneo.
+
+./U2 -t nsecs fifoname, sendo nsecs o número de segundos durante os quais se geram clientes
 
 sendo fifoname o nome da fifo pública utilizada 
 
@@ -19,8 +22,8 @@ sendo fifoname o nome da fifo pública utilizada
 - [x] CLOSD - cliente acusa informação de que o Quarto de Banho está fechado
 - [x] FAILD - cliente já não consegue receber resposta do servidor
 - [x] GAVUP - servidor já não consegue responder a pedido porque FIFO privado do cliente fechou
-
-Nota: nesta primeira fase é um pouco difícil testar as operações 2LATE e CLOSD. Para facilitar é possível descomentar a linha 48 do ficheiro 'q.c', que simula um tempo de espera entre 0.5 e 1.5 segundos por cliente.
+- [x] nthreads - número máximo de threads em simultâneo
+- [x] nplaces - número de casas de banho
 
 
 ### Detalhes
@@ -33,3 +36,5 @@ Nota: nesta primeira fase é um pouco difícil testar as operações 2LATE e CLO
 - **Condition Variables** - Utilização de duas *condition variables* no servidor (q.c):
   - para tornar a obtenção de uma vaga na casa de banho mais eficiente. Quando uma thread falha na obtenção de lugar, fica "à espera" que a *condition variable* seja assinalada, momento em que ela volta a tentar obter o lugar. Quando uma thread liberta um lugar, a mesma assinala a *condition variable*.
   - para tornar a espera por um número de threads menor que o máximo (para poder criar outra thread).
+
+- **Alarm** - Utilização de *alarm* e de tratamento do sinal *SIGALRM* para exercer o tempo de execução do programa.
