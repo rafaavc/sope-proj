@@ -63,12 +63,12 @@ int createAndOpenPrivateFIFO(char * private_fifoname) {
     int privatefd;
     sprintf(private_fifoname, "/tmp/%d.%lu", getpid(), pthread_self());
     if (mkfifo(private_fifoname, 0660) == -1) {
-        write(STDERR_FILENO, "Error making fifo", 17);
+        write(STDERR_FILENO, "Error making fifo\n", 18);
         pthread_exit(NULL);
     }
 
     if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1){
-        write(STDERR_FILENO, "Error opening private fifo", 26);
+        write(STDERR_FILENO, "Error opening private fifo\n", 27);
         pthread_exit(NULL);
     }
     return privatefd;
