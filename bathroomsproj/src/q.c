@@ -32,6 +32,7 @@ void setArgs(int argc, char ** argv) {
         bathrooms = malloc(sizeof(bool)*nplaces);
         for (int i = 0; i < nplaces; i++) bathrooms[i] = false;
     }
+    alarm(nsecs);
 }
 
 void exitThread() {
@@ -80,6 +81,12 @@ void closeBathroom() {
     bathroomOpen = false;
     pthread_cond_broadcast(&bathroomSpotCond);  // liberta as threads que estão "presas" à espera de vaga
     free(bathrooms);
+}
+
+void sig_handler(int signo) {
+    if (signo == SIGALRM) {
+        closeBathroom();
+    }
 }
 
 void waitForThread() {
@@ -150,9 +157,15 @@ void * receiveRequest(void * args){
 }
 
 int main(int argc, char ** argv) {
+    struct sigaction action;
+
+    action.sa_handler = &sig_handler;
+    action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+
+    sigaction(SIGALRM, &action, NULL);
+
     setArgs(argc, argv);
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
     if (mkfifo(fifoname, 0660) == -1) {
         perror("Error creating public fifo");
@@ -164,24 +177,25 @@ int main(int argc, char ** argv) {
         pthread_exit(NULL);
     }
 
-    while(clock_gettime(CLOCK_MONOTONIC_RAW, &end), (end.tv_sec + (end.tv_nsec/(1000000000.))) - (start.tv_sec + (start.tv_nsec/(1000000000.))) < nsecs) {
+    while(true) {
         pthread_t thread;
         structOp * op = malloc(sizeof(structOp));
         int n;
         if ((n = read(fd, op, sizeof(structOp))) > 0) {
             waitForThread();
             pthread_create(&thread, NULL, receiveRequest, op);
-        } else if (n == -1) {
-            if (errno != EAGAIN) { // EAGAIN happens when the write end hasn't been opened yet (because of O_NONBLOCK)
-                perror("Error reading public fifo");
-                pthread_exit(NULL);
-            }
         } else {
             free(op);
+            if (n == -1) {
+                if (errno != EAGAIN) { // EAGAIN happens when the write end has been opened but hasn't written yet (because of O_NONBLOCK)
+                    perror("Error reading public fifo");
+                    pthread_exit(NULL);
+                }  
+            } else if (!bathroomOpen) { // n == 0: end of file -> fifo vazio, não aberto para escrita
+                break;
+            }
         }
     }
-
-    closeBathroom();
 
     close(fd);
     unlink(fifoname);
