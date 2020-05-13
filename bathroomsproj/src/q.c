@@ -13,11 +13,11 @@
 
 #define MAX_STRING_SIZE 512
 
-int nsecs, fd, nthreads = -1, nplaces = -1;
+int nsecs, fd, nthreads, nplaces;
 char * fifoname;
 bool bathroomOpen = true;
 
-int placesCount = 0; bool * bathrooms; // shared vars; bathrooms: position 0 -> bathroom 1, position 1 -> bathroom 2 [...]
+int placesCount = 0; bool * bathrooms; // shared vars
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 void setArgs(int argc, char ** argv) {
@@ -63,6 +63,24 @@ void freeSpot(int spot) {
     pthread_mutex_unlock(&mut);
 }
 
+int waitForBathroomSpot(int i, int pl, int privatefd) {
+    int spot;
+    while(1){
+        if (!bathroomOpen){
+            logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
+            close(privatefd);
+            pthread_exit(NULL);
+        }
+        pthread_mutex_lock(&mut);
+        if ((spot = getBathroomSpot()) != -1) break;
+        pthread_mutex_unlock(&mut);
+    }
+    if (nplaces != -1) bathrooms[spot] = true;
+    pthread_mutex_unlock(&mut);
+
+    return spot;
+}
+
 void * receiveRequest(void * args){
     structOp * op = (structOp *) args;
     int i, dur, pl, privatefd;
@@ -83,18 +101,7 @@ void * receiveRequest(void * args){
     privatefd = openClientFIFO(pid, tid, i, dur, pl); // opens the client fifo to send the response to
 
     int spot;
-    while(1){
-        if (!bathroomOpen){
-            logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
-            close(privatefd);
-            pthread_exit(NULL);
-        }
-        pthread_mutex_lock(&mut);
-        if ((spot = getBathroomSpot()) != -1) break;
-        pthread_mutex_unlock(&mut);
-    }
-    if (nplaces != -1) bathrooms[spot] = true;
-    pthread_mutex_unlock(&mut);
+    spot = waitForBathroomSpot(i, pl, privatefd); // waits for the bathroom spot
     
     logOperation(i, getpid(), pthread_self(), dur, spot, ENTER, true, privatefd); // sends response to client
 
@@ -114,12 +121,12 @@ int main(int argc, char ** argv) {
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     
     if (mkfifo(fifoname, 0660) == -1) {
-        perror("Error creating public fifo\n");
+        perror("Error creating public fifo");
         pthread_exit(NULL);
     }
 
     if ((fd = open(fifoname, O_RDONLY | O_NONBLOCK)) == -1) {
-        perror("Error opening public fifo\n");
+        perror("Error opening public fifo");
         pthread_exit(NULL);
     }
 
@@ -131,7 +138,7 @@ int main(int argc, char ** argv) {
             pthread_create(&thread, NULL, receiveRequest, op);
         } else if (n == -1) {
             if (errno != EAGAIN) { // EAGAIN happens when the write end hasn't been opened yet (because of O_NONBLOCK)
-                perror("Error reading public fifo\n");
+                perror("Error reading public fifo");
                 pthread_exit(NULL);
             }
         } else {
