@@ -86,7 +86,7 @@ int openServerFIFO(int n, int dur) {
 void * sendRequest(void *args){
     int n = *(int *) args;
     int fd;
-    int dur = 150 + rand() % 150;
+    int dur = 50 + rand()%50;
 
     fd = openServerFIFO(n, dur);
 
