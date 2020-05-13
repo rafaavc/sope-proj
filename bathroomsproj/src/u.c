@@ -36,7 +36,7 @@ void waitResponse(int privatefd){
     while((n = read(privatefd, op, sizeof(structOp))) <= 0 /*&& timeElapsed < nsecs*/) {
         if (n == -1) {
             if (errno != EAGAIN) {
-                perror("Error reading from private fifo");
+                perror("Error reading from private fifo\n");
                 return;
             }
         }
@@ -63,12 +63,12 @@ int createAndOpenPrivateFIFO(char * private_fifoname) {
     int privatefd;
     sprintf(private_fifoname, "/tmp/%d.%lu", getpid(), pthread_self());
     if (mkfifo(private_fifoname, 0660) == -1) {
-        write(STDERR_FILENO, "Error making fifo", 17);
+        write(STDERR_FILENO, "Error making fifo\n", 17);
         pthread_exit(NULL);
     }
 
     if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1){
-        write(STDERR_FILENO, "Error opening private fifo", 26);
+        write(STDERR_FILENO, "Error opening private fifo\n", 26);
         pthread_exit(NULL);
     }
     return privatefd;
