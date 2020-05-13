@@ -13,7 +13,7 @@
 #include <errno.h>
 
 #define MAX_STRING_SIZE 512
-int nsecs;
+int nsecs, publicfd;
 char * fifoname;
 bool bathroomOpen = true, running = true;
 
@@ -74,39 +74,29 @@ int createAndOpenPrivateFIFO(char * private_fifoname) {
         pthread_exit(NULL);
     }
 
-    while ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1) {
-        if (errno != EMFILE) {
-            perror("Error opening private fifo");
-            pthread_exit(NULL);
-        }
+    if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1) {
+        perror("Error opening private fifo");
+        pthread_exit(NULL);
     }
 
     return privatefd;
 }
 
-int openServerFIFO(int n, int dur) {
-    int fd;
-    while ((fd = open(fifoname, O_WRONLY)) == -1){
-        if (errno != EMFILE) {
-            logOperation(n, getpid(), pthread_self(), dur, -1, FAILD, true, NOFD);
-            pthread_exit(NULL);
-        }
+void openServerFIFO() {
+    if ((publicfd = open(fifoname, O_WRONLY)) == -1){
+        perror("Error opening public fifo");
+        pthread_exit(NULL);
     }
-    return fd;
 }
 
 void * sendRequest(void *args){
     int n = *(int *) args;
-    int fd;
     int dur = 50 + rand()%50;
-
-    fd = openServerFIFO(n, dur);
 
     char * private_fifoname = malloc(MAX_STRING_SIZE);
     int privatefd = createAndOpenPrivateFIFO(private_fifoname);
 
-    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, fd);
-    close(fd);
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, publicfd);
 
     waitResponse(privatefd);
 
@@ -127,6 +117,7 @@ int main(int argc, char ** argv) {
     sigaction(SIGALRM, &action, NULL);
 
     setArgs(argc, argv);
+    openServerFIFO();
 
     srand(time(NULL));
 
@@ -141,6 +132,7 @@ int main(int argc, char ** argv) {
         count++;
     }
     
+    close(publicfd);
     pthread_exit(EXIT_SUCCESS);
 }
 
