@@ -1,17 +1,6 @@
 # BathroomAccess (t2g07)
 2º Projeto para a Unidade Curricular SOPE @ FEUP 2019-2020
 
-Uso:
-
-make
-
-./Q2 -t nsecs fifoname [-l nplaces] [-n nthreads], sendo nsecs o número de segundos que a casa de banho está aberta, nplaces o número de casas de banho e nthreads o número máximo de threads em simultâneo.
-
-./U2 -t nsecs fifoname, sendo nsecs o número de segundos durante os quais se geram clientes
-
-sendo fifoname o nome da fifo pública utilizada 
-
-
 ### Funcionalidades
 - [x] IWANT - cliente faz pedido inicial
 - [x] RECVD - servidor acusa receção de pedido
