@@ -102,11 +102,11 @@ void * sendRequest(void *args){
 
     fd = openServerFIFO(n, dur);
 
-    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, fd);
-    close(fd);
-
     char * private_fifoname = malloc(MAX_STRING_SIZE);
     int privatefd = createAndOpenPrivateFIFO(private_fifoname);
+
+    logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, fd);
+    close(fd);
 
     waitResponse(privatefd);
 
@@ -136,7 +136,7 @@ int main(int argc, char ** argv) {
         pthread_t thread;
         numbers[count % 100] = count;
         pthread_create(&thread, NULL, sendRequest, &numbers[count % 100]);
-        unsigned msInterval = 2 + rand() % 5;
+        unsigned msInterval = 10 + rand() % 5;
         usleep(msInterval*1000); // sleeps a random number of milliseconds
         count++;
     }
