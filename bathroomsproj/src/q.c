@@ -65,6 +65,12 @@ void freeSpot(int spot) {
     pthread_mutex_unlock(&mut);
 }
 
+void closeBathroom() {
+    bathroomOpen = false;
+    pthread_cond_broadcast(&cond);  // liberta as threads que estão "presas" à espera de vaga
+    free(bathrooms);
+}
+
 int waitForBathroomSpot(int i, int pl, int privatefd) {
     int spot;
     pthread_mutex_lock(&mut);
@@ -148,10 +154,9 @@ int main(int argc, char ** argv) {
             free(op);
         }
     }
-    bathroomOpen = false;
-    pthread_cond_broadcast(&cond);
 
-    free(bathrooms);
+    closeBathroom();
+
     close(fd);
     unlink(fifoname);
     pthread_exit(EXIT_SUCCESS);

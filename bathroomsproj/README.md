@@ -30,4 +30,4 @@ Nota: nesta primeira fase é um pouco difícil testar as operações 2LATE e CLO
 
 - **Mutex** - Utilização de uma mutex no servidor (q.c) para o acesso e incremento da variável partilhada pelas threads do servidor "placesCount" - contador dos locais alocados aos clientes.
 
-- **Consition Variable** - Utilização de uma condition variable no servidor (q.c) para tornar a obtenção de uma vaga na casa de banho mais eficiente. Quando uma thread falha na obtenção de lugar, fica "à espera" que a *condition variable* seja assinalada, momento em que ela volta a tentar obter o lugar. Quando uma thread liberta um lugar, a mesma assinala a *condition variable*.
+- **Condition Variable** - Utilização de uma condition variable no servidor (q.c) para tornar a obtenção de uma vaga na casa de banho mais eficiente. Quando uma thread falha na obtenção de lugar, fica "à espera" que a *condition variable* seja assinalada, momento em que ela volta a tentar obter o lugar. Quando uma thread liberta um lugar, a mesma assinala a *condition variable*.
