@@ -15,13 +15,20 @@
 #define MAX_STRING_SIZE 512
 int nsecs;
 char * fifoname;
-bool bathroomOpen = true;
+bool bathroomOpen = true, running = true;
 
 
 void setArgs(int argc, char ** argv) {
     UArgs args = getCommandLineArgsU(argc, argv);
     nsecs = args.nsecs;
     fifoname = args.fifoname;
+    alarm(nsecs);
+}
+
+void sig_handler(int signo) {
+    if (signo == SIGALRM) {
+        running = false;
+    }
 }
 
 void waitResponse(int privatefd){
@@ -33,7 +40,7 @@ void waitResponse(int privatefd){
 
     int n;
 
-    while((n = read(privatefd, op, sizeof(structOp))) <= 0 /*&& timeElapsed < nsecs*/) {
+    while((n = read(privatefd, op, sizeof(structOp))) <= 0) {
         if (n == -1) {
             if (errno != EAGAIN) {
                 perror("Error reading from private fifo");
@@ -106,13 +113,20 @@ void * sendRequest(void *args){
 
 
 int main(int argc, char ** argv) {
+    struct sigaction action;
+
+    action.sa_handler = &sig_handler;
+    action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+
+    sigaction(SIGALRM, &action, NULL);
+
     setArgs(argc, argv);
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
     srand(time(NULL));
+
     int count = 0;
-    while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), (end.tv_sec + (end.tv_nsec/(1000000000.))) - (start.tv_sec + (start.tv_nsec/(1000000000.))) < nsecs && bathroomOpen)) {
+    while(running && bathroomOpen) {
         pthread_t thread;
         int n = count;
         pthread_create(&thread, NULL, sendRequest, &n);
