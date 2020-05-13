@@ -112,10 +112,11 @@ int main(int argc, char ** argv) {
 
     srand(time(NULL));
     int count = 0;
+    int numbers[100];
     while((clock_gettime(CLOCK_MONOTONIC_RAW, &end), (end.tv_sec + (end.tv_nsec/(1000000000.))) - (start.tv_sec + (start.tv_nsec/(1000000000.))) < nsecs && bathroomOpen)) {
         pthread_t thread;
-        int n = count;
-        pthread_create(&thread, NULL, sendRequest, &n);
+        numbers[count % 100] = count;
+        pthread_create(&thread, NULL, sendRequest, &numbers[count % 100]);
         unsigned msInterval = 2 + rand() % 5;
         usleep(msInterval*1000); // sleeps a random number of milliseconds
         count++;
