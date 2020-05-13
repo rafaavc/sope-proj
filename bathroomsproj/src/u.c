@@ -131,10 +131,11 @@ int main(int argc, char ** argv) {
     srand(time(NULL));
 
     int count = 0;
+    int numbers[100];
     while(running && bathroomOpen) {
         pthread_t thread;
-        int n = count;
-        pthread_create(&thread, NULL, sendRequest, &n);
+        numbers[count % 100] = count;
+        pthread_create(&thread, NULL, sendRequest, &numbers[count % 100]);
         unsigned msInterval = 2 + rand() % 5;
         usleep(msInterval*1000); // sleeps a random number of milliseconds
         count++;
