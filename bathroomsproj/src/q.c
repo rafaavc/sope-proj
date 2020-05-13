@@ -17,9 +17,10 @@ int nsecs, fd, nthreads, nplaces;
 char * fifoname;
 bool bathroomOpen = true;
 
-int placesCount = 0; bool * bathrooms; // shared vars
+int placesCount = 0; bool * bathrooms; int amountOfThreads = 0; // shared vars
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t bathroomSpotCond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t threadAmountCond = PTHREAD_COND_INITIALIZER;
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
@@ -33,6 +34,16 @@ void setArgs(int argc, char ** argv) {
     }
 }
 
+void exitThread() {
+    if (nthreads != -1) {
+        pthread_mutex_lock(&mut);
+        amountOfThreads--;
+        pthread_cond_signal(&threadAmountCond);
+        pthread_mutex_unlock(&mut);
+    }
+    pthread_exit(NULL);
+}
+
 int openClientFIFO(pid_t pid, pthread_t tid, int i, int dur, int pl) {
     int privatefd;
     char * private_fifoname = malloc(MAX_STRING_SIZE);
@@ -41,7 +52,7 @@ int openClientFIFO(pid_t pid, pthread_t tid, int i, int dur, int pl) {
 
     if ((privatefd = open(private_fifoname, O_WRONLY)) == -1){
         logOperation(i, getpid(), pthread_self(), dur, pl, GAVUP, true, NOFD);
-        pthread_exit(NULL);
+        exitThread();
     }
 
     free(private_fifoname);
@@ -61,14 +72,27 @@ int getBathroomSpot() {
 void freeSpot(int spot) {
     pthread_mutex_lock(&mut);
     bathrooms[spot] = false;
-    pthread_cond_signal(&cond);
+    pthread_cond_signal(&bathroomSpotCond);
     pthread_mutex_unlock(&mut);
 }
 
 void closeBathroom() {
     bathroomOpen = false;
-    pthread_cond_broadcast(&cond);  // liberta as threads que estão "presas" à espera de vaga
+    pthread_cond_broadcast(&bathroomSpotCond);  // liberta as threads que estão "presas" à espera de vaga
     free(bathrooms);
+}
+
+void waitForThread() {
+    if (nthreads == -1) return;
+    pthread_mutex_lock(&mut);
+    while(true) {
+        if (amountOfThreads < nthreads) {
+            amountOfThreads++;
+            break;
+        }
+        pthread_cond_wait(&threadAmountCond, &mut);
+    }
+    pthread_mutex_unlock(&mut);
 }
 
 int waitForBathroomSpot(int i, int pl, int privatefd) {
@@ -79,10 +103,10 @@ int waitForBathroomSpot(int i, int pl, int privatefd) {
             pthread_mutex_unlock(&mut);
             logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
             close(privatefd);
-            pthread_exit(NULL);
+            exitThread();
         }
         if ((spot = getBathroomSpot()) != -1) break;
-        pthread_cond_wait(&cond, &mut);
+        pthread_cond_wait(&bathroomSpotCond, &mut);
     }
     if (nplaces != -1) bathrooms[spot] = true;
     pthread_mutex_unlock(&mut);
@@ -102,7 +126,7 @@ void * receiveRequest(void * args){
 
     if (oper != IWANT) {
         write(STDERR_FILENO, "Unknown operation\n", 18);
-        pthread_exit(NULL);
+        exitThread();
     }
 
     logOperation(i, getpid(), pthread_self(), dur, pl, RECVD, true, NOFD); // logs reception of operation
@@ -121,7 +145,8 @@ void * receiveRequest(void * args){
     if (nplaces != -1) freeSpot(spot); // in case of limited spots, frees the spot
 
     close(privatefd);
-    pthread_exit(NULL);
+    exitThread();
+    return NULL;
 }
 
 int main(int argc, char ** argv) {
@@ -144,6 +169,7 @@ int main(int argc, char ** argv) {
         structOp * op = malloc(sizeof(structOp));
         int n;
         if ((n = read(fd, op, sizeof(structOp))) > 0) {
+            waitForThread();
             pthread_create(&thread, NULL, receiveRequest, op);
         } else if (n == -1) {
             if (errno != EAGAIN) { // EAGAIN happens when the write end hasn't been opened yet (because of O_NONBLOCK)
