@@ -50,7 +50,6 @@ QArgs getCommandLineArgsQ(int argc, char * argv[]) {
                 }
                 break;
             case 'l':
-                // for phase 2
                 res.nplaces = atoi(optarg);
                 if (res.nplaces <= 0) {
                     printf("nplaces can't be negative nor 0\n");
@@ -58,7 +57,6 @@ QArgs getCommandLineArgsQ(int argc, char * argv[]) {
                 }
                 break;
             case 'n':
-                // for phase 2
                 res.nthreads = atoi(optarg);
                 if (res.nthreads <= 0) {
                     printf("nthreads can't be negative nor 0\n");

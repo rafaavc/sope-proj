@@ -19,6 +19,7 @@ bool bathroomOpen = true;
 
 int placesCount = 0; bool * bathrooms; // shared vars
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 void setArgs(int argc, char ** argv) {
     QArgs args = getCommandLineArgsQ(argc, argv);
@@ -60,20 +61,22 @@ int getBathroomSpot() {
 void freeSpot(int spot) {
     pthread_mutex_lock(&mut);
     bathrooms[spot] = false;
+    pthread_cond_signal(&cond);
     pthread_mutex_unlock(&mut);
 }
 
 int waitForBathroomSpot(int i, int pl, int privatefd) {
     int spot;
+    pthread_mutex_lock(&mut);
     while(1){
         if (!bathroomOpen){
+            pthread_mutex_unlock(&mut);
             logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
             close(privatefd);
             pthread_exit(NULL);
         }
-        pthread_mutex_lock(&mut);
         if ((spot = getBathroomSpot()) != -1) break;
-        pthread_mutex_unlock(&mut);
+        pthread_cond_wait(&cond, &mut);
     }
     if (nplaces != -1) bathrooms[spot] = true;
     pthread_mutex_unlock(&mut);
@@ -146,6 +149,7 @@ int main(int argc, char ** argv) {
         }
     }
     bathroomOpen = false;
+    pthread_cond_broadcast(&cond);
 
     free(bathrooms);
     close(fd);
