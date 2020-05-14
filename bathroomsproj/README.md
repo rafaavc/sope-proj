@@ -27,3 +27,8 @@
   - para tornar a espera por um número de threads menor que o máximo (para poder criar outra thread).
 
 - **Alarm** - Utilização de *alarm* e de tratamento do sinal *SIGALRM* para exercer o tempo de execução do programa.
+
+### Possiveís finais do programa
+- **Cliente termina antes do servidor** - O servidor continua a correr até chegar ao seu limite de tempo, respondendo às threads com pedidos por parte do cliente, e atende outros clientes que aparecam. Neste caso o tempo do cliente pode ser significativamente maior que o previsto por ter threads à espera de entrar na casa de banho antes de terminar, as quais vão ainda ser atendidas, sendo que no pior caso estará em execução até o servidor terminar.
+
+- **Servidor termina antes do cliente** - Ao terminar o servidor vai enviar sinal 2LATE a todos os pedidos pendentes. O cliente vai deixar de criar novas threads e termina quando todas as suas threads em execução obtiverem resposta. Neste caso o tempo do cliente vai ser menor do que o tempo previsto.
