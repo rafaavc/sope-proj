@@ -83,9 +83,8 @@ int createAndOpenPrivateFIFO(char * private_fifoname) {
 }
 
 void openServerFIFO() {
-    if ((publicfd = open(fifoname, O_WRONLY)) == -1){
-        perror("Error opening public fifo");
-        pthread_exit(NULL);
+    while ((publicfd = open(fifoname, O_WRONLY)) == -1){
+        sleep(1);
     }
 }
 
@@ -96,6 +95,12 @@ void * sendRequest(void *args){
     char * private_fifoname = malloc(MAX_STRING_SIZE);
     int privatefd = createAndOpenPrivateFIFO(private_fifoname);
 
+    if (!running || !bathroomOpen){
+        close(privatefd);
+        unlink(private_fifoname);
+        free(private_fifoname);
+        pthread_exit(NULL);
+    }
     logOperation(n, getpid(), pthread_self(), dur, -1, IWANT, true, publicfd);
 
     waitResponse(privatefd);
