@@ -18,7 +18,8 @@ char * fifoname;
 bool bathroomOpen = true;
 
 int placesCount = 0; bool * bathrooms; int amountOfThreads = 0; // shared vars
-pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t bathroomSpotMut = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t threadAmountMut = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t bathroomSpotCond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t threadAmountCond = PTHREAD_COND_INITIALIZER;
 
@@ -37,10 +38,10 @@ void setArgs(int argc, char ** argv) {
 
 void exitThread() {
     if (nthreads != -1) {
-        pthread_mutex_lock(&mut);
+        pthread_mutex_lock(&threadAmountMut);
         amountOfThreads--;
         pthread_cond_signal(&threadAmountCond);
-        pthread_mutex_unlock(&mut);
+        pthread_mutex_unlock(&threadAmountMut);
     }
     pthread_exit(NULL);
 }
@@ -71,16 +72,15 @@ int getBathroomSpot() {
 }
 
 void freeSpot(int spot) {
-    pthread_mutex_lock(&mut);
+    pthread_mutex_lock(&bathroomSpotMut);
     bathrooms[spot] = false;
     pthread_cond_signal(&bathroomSpotCond);
-    pthread_mutex_unlock(&mut);
+    pthread_mutex_unlock(&bathroomSpotMut);
 }
 
 void closeBathroom() {
     bathroomOpen = false;
     pthread_cond_broadcast(&bathroomSpotCond);  // liberta as threads que estão "presas" à espera de vaga
-    free(bathrooms);    //coment if server segmentation fault
 }
 
 void sig_handler(int signo) {
@@ -91,32 +91,32 @@ void sig_handler(int signo) {
 
 void waitForThread() {
     if (nthreads == -1) return;
-    pthread_mutex_lock(&mut);
+    pthread_mutex_lock(&threadAmountMut);
     while(true) {
         if (amountOfThreads < nthreads) {
             amountOfThreads++;
             break;
         }
-        pthread_cond_wait(&threadAmountCond, &mut);
+        pthread_cond_wait(&threadAmountCond, &threadAmountMut);
     }
-    pthread_mutex_unlock(&mut);
+    pthread_mutex_unlock(&threadAmountMut);
 }
 
 int waitForBathroomSpot(int i, int pl, int privatefd) {
     int spot;
-    pthread_mutex_lock(&mut);
+    pthread_mutex_lock(&bathroomSpotMut);
     while(1){
         if (!bathroomOpen){
-            pthread_mutex_unlock(&mut);
+            pthread_mutex_unlock(&bathroomSpotMut);
             logOperation(i, getpid(), pthread_self(), -1, pl, TLATE, true, privatefd); // sends response to client
             close(privatefd);
             exitThread();
         }
         if ((spot = getBathroomSpot()) != -1) break;
-        pthread_cond_wait(&bathroomSpotCond, &mut);
+        pthread_cond_wait(&bathroomSpotCond, &bathroomSpotMut);
     }
     if (nplaces != -1) bathrooms[spot] = true;
-    pthread_mutex_unlock(&mut);
+    pthread_mutex_unlock(&bathroomSpotMut);
 
     return spot;
 }
@@ -199,5 +199,6 @@ int main(int argc, char ** argv) {
 
     close(fd);
     unlink(fifoname);
+    free(bathrooms);
     pthread_exit(EXIT_SUCCESS);
 }

@@ -74,7 +74,7 @@ int createAndOpenPrivateFIFO(char * private_fifoname) {
         pthread_exit(NULL);
     }
 
-    while ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1) {
+    while ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1 && running) {
         if (errno != ENFILE) {
             perror("Error opening private fifo");
             pthread_exit(NULL);
@@ -86,7 +86,7 @@ int createAndOpenPrivateFIFO(char * private_fifoname) {
 }
 
 void openServerFIFO() {
-    while ((publicfd = open(fifoname, O_WRONLY)) == -1){
+    while ((publicfd = open(fifoname, O_WRONLY)) == -1 && running){
         sleep(1);
     }
 }
