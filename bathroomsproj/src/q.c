@@ -80,7 +80,7 @@ void freeSpot(int spot) {
 void closeBathroom() {
     bathroomOpen = false;
     pthread_cond_broadcast(&bathroomSpotCond);  // liberta as threads que estão "presas" à espera de vaga
-    free(bathrooms);
+    free(bathrooms);    //coment if server segmentation fault
 }
 
 void sig_handler(int signo) {

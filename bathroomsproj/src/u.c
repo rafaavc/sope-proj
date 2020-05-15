@@ -74,9 +74,12 @@ int createAndOpenPrivateFIFO(char * private_fifoname) {
         pthread_exit(NULL);
     }
 
-    if ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1) {
-        perror("Error opening private fifo");
-        pthread_exit(NULL);
+    while ((privatefd = open(private_fifoname, O_RDONLY | O_NONBLOCK)) == -1) {
+        if (errno != ENFILE) {
+            perror("Error opening private fifo");
+            pthread_exit(NULL);
+        }
+        usleep(3000);
     }
 
     return privatefd;
