@@ -20,11 +20,13 @@
 
 - **FIFOs** - Utilização de *FIFOs* para comunização entre as threads dos clientes e o servidor, nomedamente: uma *FIFO* pública, para envio do pedido ao servidor e uma *FIFO* privada, única para cada cliente e através da qual o servidor responde ao pedido do cliente.
 
-- **Mutex** - Utilização de uma *mutex* no servidor (q.c) para o acesso e incremento da variável partilhada pelas *threads* do servidor "placesCount" - contador dos locais alocados aos clientes.
+- **Mutex** - Utilização de duas *mutex* no servidor (q.c):
+  - *bathroomSpotMut*: para o acesso e alteração das variáveis partilhadas pelas *threads* do servidor "placesCount" - contador dos locais alocados aos clientes e "bathrooms" - array das casas de banho e dos seus estados (ocupada ou não ocupada).
+  - *threadAmountMut*: para o acesso e alteração da variável "amountOfThreads" que controla o número de threads ativas.
 
 - **Condition Variables** - Utilização de duas *condition variables* no servidor (q.c):
-  - para tornar a obtenção de uma vaga na casa de banho mais eficiente. Quando uma thread falha na obtenção de lugar, fica "à espera" que a *condition variable* seja assinalada, momento em que ela volta a tentar obter o lugar. Quando uma thread liberta um lugar, a mesma assinala a *condition variable*.
-  - para tornar a espera por um número de threads menor que o máximo (para poder criar outra thread).
+  - *bathroomSpotCond*: para tornar a obtenção de uma vaga na casa de banho mais eficiente. Quando uma thread falha na obtenção de lugar, fica "à espera" que a *condition variable* seja assinalada, momento em que ela volta a tentar obter o lugar. Quando uma thread liberta um lugar, a mesma assinala a *condition variable*.
+  - *threadAmountCond*: para tornar a espera por um número de threads menor que o máximo (para poder criar outra thread) mais eficiente. Quando uma thread termina, assinala esta *condition variable*.
 
 - **Alarm** - Utilização de *alarm* e de tratamento do sinal *SIGALRM* para exercer o tempo de execução do programa.
 
